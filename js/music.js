@@ -20,6 +20,12 @@
       this.title = file.name.replace(/\.[^.]+$/, '');
       this.sub = '本地文件';
     },
+    unload() {
+      el.pause();
+      if (el.src) { URL.revokeObjectURL(el.src); el.removeAttribute('src'); el.load(); }
+      this.ready = false;
+      this.key = null;
+    },
     play() { return el.play(); },
     pause() { el.pause(); },
     isPlaying() { return !el.paused && !el.ended && el.readyState > 2; },
@@ -30,6 +36,64 @@
     setVolume(v) { el.volume = v; },
   };
   el.addEventListener('ended', () => DC.filePlayer.onEnded && DC.filePlayer.onEnded());
+
+  // ---- backing tracks remembered per piece -------------------------------
+  // The audio files stay on this device, in the browser's own database, keyed by score id.
+  const memory = new Map();
+  const db = () => new Promise((resolve, reject) => {
+    const rq = indexedDB.open('drum-coach', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('tracks');
+    rq.onsuccess = () => resolve(rq.result);
+    rq.onerror = () => reject(rq.error);
+  });
+  const tx = async (mode, fn) => {
+    const d = await db();
+    return new Promise((resolve, reject) => {
+      const rq = fn(d.transaction('tracks', mode).objectStore('tracks'));
+      rq.onsuccess = () => resolve(rq.result);
+      rq.onerror = () => reject(rq.error);
+    });
+  };
+  DC.tracks = {
+    async put(id, file) { memory.set(id, file); try { await tx('readwrite', (s) => s.put(file, id)); } catch (e) { /* kept for this visit only */ } },
+    async get(id) { if (memory.has(id)) return memory.get(id); try { return (await tx('readonly', (s) => s.get(id))) || null; } catch (e) { return null; } },
+    async del(id) { memory.delete(id); try { await tx('readwrite', (s) => s.delete(id)); } catch (e) { /* ignore */ } },
+  };
+
+  // Find where the beat sits in a recording whose tempo is already known.
+  // Returns the time of the first sound, nudged onto the beat grid that best fits the whole track.
+  DC.findFirstBeat = async function (file, bpm) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const data = await file.arrayBuffer();
+    const audio = await new Promise((resolve, reject) => {
+      const p = new OAC(1, 1, 44100).decodeAudioData(data, resolve, reject);
+      if (p && p.catch) p.catch(reject);
+    });
+    const sr = audio.sampleRate, hop = Math.round(sr / 86), n = Math.floor(audio.length / hop);
+    const chans = [];
+    for (let c = 0; c < audio.numberOfChannels; c++) chans.push(audio.getChannelData(c));
+    const env = new Float32Array(n);
+    let max = 0;
+    for (let i = 0; i < n; i++) {
+      let sum = 0;
+      for (let j = i * hop; j < (i + 1) * hop; j++) { let v = 0; for (const ch of chans) v += ch[j]; v /= chans.length; sum += v * v; }
+      env[i] = Math.sqrt(sum / hop);
+      if (env[i] > max) max = env[i];
+    }
+    if (!(max > 0)) throw new Error('silent');
+    const flux = new Float32Array(n);
+    for (let i = 1; i < n; i++) flux[i] = Math.max(0, Math.log1p(200 * env[i] / max) - Math.log1p(200 * env[i - 1] / max));
+    let first = 0;
+    while (first < n && env[first] < 0.05 * max) first++;
+    const t0 = (first * hop) / sr, per = 60 / bpm, dur = (n * hop) / sr;
+    let best = t0, bestScore = -1;
+    for (let ph = t0 - 0.08; ph <= t0 + 0.08; ph += 0.002) {
+      let score = 0;
+      for (let t = ph; t < dur; t += per) { const i = Math.round((t * sr) / hop); if (i >= 0 && i < n) score += flux[i]; }
+      if (score > bestScore) { bestScore = score; best = ph; }
+    }
+    return Math.max(0, best);
+  };
 
   // ---- Apple Music ------------------------------------------------------
   const MK_SRC = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js';

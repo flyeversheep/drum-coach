@@ -90,7 +90,8 @@
     };
   }
   // Is a note expected on this absolute step? (Nothing is expected during the count-in.)
-  const expectedAt = (abs) => !(free() && abs < 0) && view.cols[mod(abs, total)].length > 0;
+  // Nothing is expected before the first bar: that time is the count-in.
+  const expectedAt = (abs) => abs >= 0 && view.cols[mod(abs, total)].length > 0;
 
   // ---- score ------------------------------------------------------------
   function barsPerRow() {
@@ -140,6 +141,7 @@
     if ((S.source === 'ext' || (!keepBpm && free())) && score.bpm) setBpm(score.bpm, true);
     rebuild();
     showTip();
+    if (S.source === 'file') loadTrackFor(score.id);
     edBar = Math.min(edBar, score.bars.length - 1);
     renderEditor();
     saveSettings();
@@ -386,9 +388,9 @@
     if (!S.running || S.mode !== 'tempo' || !clock || !view || pause.wait) return;
     if (!clock.active) { view.setPlayhead(null); return; }
     const pos = clock.posAt(A.ctx.currentTime);
-    if (free() && pos < 0) {
+    if (pos < 0) {
       view.setPlayhead(null);
-      say('预备… ' + clamp(Math.floor((pos + 16) / 4) + 1, 1, 4));
+      say(free() ? '预备… ' + clamp(Math.floor((pos + 16) / 4) + 1, 1, 4) : pos > -32 ? '预备… ' + (Math.floor((pos + 32) / 4) % 4 + 1) : '预备，听音乐');
       return;
     }
     if ($('verdict').textContent.startsWith('预备')) say(A.micOn ? '开始！' : '跟着蓝线打（没开麦克风，不计分）');
@@ -542,7 +544,55 @@
     saveSongSync();
     saveSettings();
   }
-  function onSongLoaded(p) {
+  // ---- backing track files, one per piece --------------------------------
+  const COUNT_IN_BARS = 2; // the book's recordings all start with a two-bar count-in
+  const norm = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
+  function scoreForFile(name) {
+    const n = norm(name);
+    return custom.find((sc) => { const m = sc.name.match(/·\s*(.+?)\s*–/); const t = m ? norm(m[1]) : ''; return t.length >= 4 && n.includes(t); }) || null;
+  }
+  async function loadTrackFor(id) {
+    const f = await DC.tracks.get(id);
+    if (S.source !== 'file' || !score || score.id !== id) return;
+    if (f) {
+      DC.filePlayer.load(f);
+      onSongLoaded(DC.filePlayer, f);
+      $('fileState').textContent = `这首曲子的伴奏：${f.name}`;
+    } else {
+      DC.filePlayer.unload();
+      $('songBar').hidden = true;
+      if (score.bpm) setBpm(score.bpm, true);
+      $('fileState').textContent = '这首曲子还没有伴奏文件，在上面选一个。';
+    }
+  }
+  async function addFiles(files) {
+    if (S.running) stop();
+    const lines = [];
+    let jump = null;
+    for (const f of files) {
+      const sc = scoreForFile(f.name) || (files.length === 1 ? score : null);
+      if (!sc) { lines.push(`${f.name}：没找到名字对得上的曲目，先选好曲目再单独添加这个文件`); continue; }
+      await DC.tracks.put(sc.id, f);
+      lines.push(`${f.name} → ${sc.name}`);
+      if (!jump || sc.id === score.id) jump = sc.id;
+    }
+    toast(lines.join('；'));
+    if (jump && jump !== score.id) loadScore(jump); else loadTrackFor(score.id);
+  }
+  async function autoSync(p, file) {
+    const bpm = (score && score.bpm) || S.bpm;
+    try {
+      const first = await DC.findFirstBeat(file, bpm);
+      if (p.key !== 'file:' + file.name) return;
+      setBpm(bpm, true);
+      setSongOffset(first + (COUNT_IN_BARS * 4 * 60) / bpm);
+      toast(`已自动对拍：速度 ${bpm}，第 1 小节从 ${S.songOffset.toFixed(2)} 秒开始（按 ${COUNT_IN_BARS} 小节预备拍推算）。打开「节拍器」可以听是否对齐，不准就用「第 1 拍在」旁边的 − / + 微调。`);
+    } catch (e) {
+      toast('没能自动对拍。按「开始」放起来，再跟着音乐按「点拍子」8 下。');
+    }
+  }
+
+  function onSongLoaded(p, file) {
     $('songBar').hidden = false;
     $('songTitle').textContent = p.title || '（没有名字）';
     $('songSub').textContent = p.sub || '';
@@ -552,7 +602,8 @@
     p.setVolume(S.vol);
     const r = p.setRate(Number($('songRate').value)) || p.rate;
     if (Math.abs(r - Number($('songRate').value)) > 0.01) $('songRate').value = '1';
-    if (!sv) toast('新歌：先按「开始」放起来，再跟着音乐按「点拍子」8 下对拍子。');
+    if (!sv && file) autoSync(p, file);
+    else if (!sv) toast('新歌：先按「开始」放起来，再跟着音乐按「点拍子」8 下对拍子。');
   }
   function setSource(src) {
     if (S.running) stop();
@@ -564,7 +615,8 @@
     $('paneFile').hidden = src !== 'file';
     const p = provider();
     $('songBar').hidden = !(p && p.ready);
-    if (p && p.ready) onSongLoaded(p);
+    if (src === 'file' && score) loadTrackFor(score.id);
+    else if (p && p.ready) onSongLoaded(p);
     if (src === 'ext' && score && score.bpm) setBpm(score.bpm, true);
     $('bpmLbl').textContent = src === 'metro' ? '速度' : '歌曲速度';
     $('optCount').disabled = src !== 'metro';
@@ -803,7 +855,7 @@
     $('cal').value = S.cal == null ? '' : S.cal;
     $('songVol').value = S.vol;
     setSens(S.sens);
-    if (S.source === 'apple' || S.source === 'file') S.source = 'metro'; // a song has to be picked again after a reload
+    if (S.source === 'apple') S.source = 'ext'; // an Apple Music song has to be picked again after a reload
     setSource(S.source);
     setMode(S.mode);
     loadScore(S.scoreId, true);
@@ -833,11 +885,9 @@
     $('calBtn').addEventListener('click', calibrate);
 
     $('fileInput').addEventListener('change', (e) => {
-      const f = e.target.files[0];
-      if (!f) return;
-      if (S.running) stop();
-      DC.filePlayer.load(f);
-      onSongLoaded(DC.filePlayer);
+      const files = [...e.target.files];
+      e.target.value = '';
+      if (files.length) addFiles(files);
     });
     $('songSeek').addEventListener('input', (e) => { seeking = true; $('songCur').textContent = fmt(Number(e.target.value)); });
     $('songSeek').addEventListener('change', async (e) => {

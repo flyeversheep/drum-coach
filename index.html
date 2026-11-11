@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>鼓点跟练</title>
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <div class="wrap">
@@ -157,9 +157,10 @@
       </div>
 
       <div id="paneFile" class="pane" hidden>
-        <label class="field"><span>选一个音频文件（mp3 / m4a / wav，不能是有版权保护的 Apple Music 下载文件）</span>
-          <input type="file" id="fileInput" accept="audio/*">
+        <label class="field"><span>添加伴奏文件（mp3 / m4a / wav，可以一次选多个）。文件名里带曲名的会自动配到对应曲目并记住，以后选曲目就行。</span>
+          <input type="file" id="fileInput" accept="audio/*" multiple>
         </label>
+        <p class="muted small" id="fileState"></p>
       </div>
 
       <div id="songBar" class="songbar" hidden>
@@ -219,15 +220,15 @@
   </details>
 
   <footer class="foot muted small">
-    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 10</span>
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 11</span>
   </footer>
 </div>
 
 <!-- Bump every ?v= number (and the version in the footer) together whenever a file changes, so devices never mix old and new files. -->
-<script src="js/scores.js?v=10"></script>
-<script src="js/notation.js?v=10"></script>
-<script src="js/audio.js?v=10"></script>
-<script src="js/music.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/scores.js?v=11"></script>
+<script src="js/notation.js?v=11"></script>
+<script src="js/audio.js?v=11"></script>
+<script src="js/music.js?v=11"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>
