@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>鼓点跟练</title>
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <div class="wrap">
@@ -60,6 +60,7 @@
 
     <div class="transport">
       <button type="button" id="startBtn" class="go">▶ 开始</button>
+      <button type="button" id="againBtn" class="ghost strong again" hidden>↺ 从头再来</button>
       <div class="bpm">
         <span class="lbl" id="bpmLbl">速度</span>
         <button type="button" id="bpmDown" aria-label="慢一点">−</button>
@@ -113,12 +114,17 @@
       <h2>伴奏音乐</h2>
       <div class="seg" id="srcSeg" role="group" aria-label="音乐来源">
         <button type="button" data-src="metro" aria-pressed="true">只用节拍器</button>
+        <button type="button" data-src="ext" aria-pressed="false">别的 App 放歌</button>
         <button type="button" data-src="apple" aria-pressed="false">Apple Music</button>
         <button type="button" data-src="file" aria-pressed="false">本地音频文件</button>
       </div>
 
       <div id="paneMetro" class="pane">
         <p class="muted small">没有音乐，跟着节拍器练。想跟着手机或音箱里放的歌练，也可以：跟着歌按「点拍子」定好速度，关掉节拍器，在第 1 拍按「开始」。</p>
+      </div>
+
+      <div id="paneExt" class="pane" hidden>
+        <p class="muted small">音乐在「音乐」App 或别的设备上放，这个页面全程不出声，只听鼓。把上面的「歌曲速度」设成书上标的速度；按「开始」后去放音乐，他打第一下时谱子开始走。停 5 秒或点「从头再来」，谱子回到开头等下一次。音乐请用耳机听，否则会被麦克风当成鼓声。</p>
       </div>
 
       <div id="paneApple" class="pane" hidden>
@@ -213,15 +219,15 @@
   </details>
 
   <footer class="foot muted small">
-    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 8</span>
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 9</span>
   </footer>
 </div>
 
 <!-- Bump every ?v= number (and the version in the footer) together whenever a file changes, so devices never mix old and new files. -->
-<script src="js/scores.js?v=8"></script>
-<script src="js/notation.js?v=8"></script>
-<script src="js/audio.js?v=8"></script>
-<script src="js/music.js?v=8"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/scores.js?v=9"></script>
+<script src="js/notation.js?v=9"></script>
+<script src="js/audio.js?v=9"></script>
+<script src="js/music.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>

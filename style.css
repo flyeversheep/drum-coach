@@ -263,3 +263,5 @@ input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px;
   .hit-led { transition: background 0.12s, box-shadow 0.12s; }
   .gauge .dot { transition: left 0.08s; }
 }
+
+.again { min-height: 52px; font-size: 16px; }

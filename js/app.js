@@ -52,6 +52,8 @@
   const PAUSE_SEC = 5;
   const pause = { wait: false, lastOnset: 0, missRun: 0 };
 
+  // "Free-running" sources have no music of their own to follow: the metronome, and music playing in another app.
+  const free = () => S.source === 'metro' || S.source === 'ext';
   const provider = () => (S.source === 'apple' ? DC.apple : S.source === 'file' ? DC.filePlayer : null);
   const calSec = () => (S.cal == null ? 0.06 : S.cal / 1000);
 
@@ -86,7 +88,7 @@
     };
   }
   // Is a note expected on this absolute step? (Nothing is expected during the count-in.)
-  const expectedAt = (abs) => !(S.source === 'metro' && abs < 0) && view.cols[mod(abs, total)].length > 0;
+  const expectedAt = (abs) => !(free() && abs < 0) && view.cols[mod(abs, total)].length > 0;
 
   // ---- score ------------------------------------------------------------
   function barsPerRow() {
@@ -132,7 +134,7 @@
     score = allScores().find((s) => s.id === id) || DC.PRESETS[3];
     S.scoreId = score.id;
     $('scoreSel').value = score.id;
-    if (!keepBpm && S.source === 'metro' && score.bpm) setBpm(score.bpm, true);
+    if (!keepBpm && free() && score.bpm) setBpm(score.bpm, true);
     rebuild();
     showTip();
     edBar = Math.min(edBar, score.bars.length - 1);
@@ -248,7 +250,9 @@
       const dms = (hp - best) * sm;
       const good = Math.min(GOOD_MS[S.judge] || 65, limit * sm * 0.6);
       record(best, Math.abs(dms) <= good ? 'good' : dms < 0 ? 'early' : 'late', dms);
-    } else if (hp > -0.5 || S.source !== 'metro') {
+      // With outside music the grid was placed by the player's first hit; let it settle onto their playing.
+      if (S.source === 'ext' && clock.t0 != null) clock.t0 += (dms / 1000) * 0.15;
+    } else if (hp > -0.5 || !free()) {
       stats.extra++;
       showStats();
     }
@@ -292,13 +296,23 @@
     view.setCursor(view.notes[0]);
     say('停了一会儿，从头再来：打第一个音');
   }
-  function waitForHit() {
+  function waitForHit(msg) {
     pause.wait = true;
     view.clearMarks();
     markAbs.fill(null);
     view.setPlayhead(null);
     view.setCursor(view.notes[0]);
-    say('停了一会儿，从头再来：你打第一下，我就跟上');
+    say(msg || (S.source === 'ext' ? '停了一会儿。把音乐倒回开头，再打第一下，我就跟上' : '停了一会儿，从头再来：你打第一下，我就跟上'));
+  }
+  // The "start over" button: the same reset, on demand.
+  function restartNow() {
+    if (!S.running) return;
+    if (S.mode === 'follow') { followBackToStart(); say('从头再来：打第一个音'); return; }
+    if (free()) { waitForHit(S.source === 'ext' ? '把音乐倒回开头，再打第一下，我就跟上' : '从头再来：你打第一下，我就跟上'); return; }
+    const p = provider();
+    try { if (p && p.ready) p.seek(0); } catch (e) { /* ignore */ }
+    resetStats(); view.clearMarks(); markAbs.fill(null); judge.done.clear(); judge.cursor = null; sched.next = null;
+    say('从头再来');
   }
   function restartOnHit(t) {
     pause.wait = false;
@@ -314,6 +328,7 @@
 
   // ---- engine loop ------------------------------------------------------
   function scheduleStep(abs, t) {
+    if (S.source === 'ext') return; // any sound from this page would fight the other app for the speaker
     if (S.metro && mod(abs, 4) === 0) A.click(t, mod(abs, 16) === 0);
     if (S.demo && expectedAt(abs)) view.cols[mod(abs, total)].forEach((id) => A.drum(id, t));
   }
@@ -349,7 +364,7 @@
       judge.cursor++;
     }
     // Only with the metronome: a song keeps playing, so its position cannot follow the player.
-    if (S.autoRestart && S.source === 'metro' && pause.missRun >= 2 && now - Math.max(pause.lastOnset, clock.timeAt(0)) >= PAUSE_SEC) waitForHit();
+    if (S.autoRestart && free() && pause.missRun >= 2 && now - Math.max(pause.lastOnset, clock.timeAt(0)) >= PAUSE_SEC) waitForHit();
   }
   let meterPeak = 0, lastSeekUi = 0;
   function draw() {
@@ -368,7 +383,7 @@
     if (!S.running || S.mode !== 'tempo' || !clock || !view || pause.wait) return;
     if (!clock.active) { view.setPlayhead(null); return; }
     const pos = clock.posAt(A.ctx.currentTime);
-    if (S.source === 'metro' && pos < 0) {
+    if (free() && pos < 0) {
       view.setPlayhead(null);
       say('预备… ' + clamp(Math.floor((pos + 16) / 4) + 1, 1, 4));
       return;
@@ -409,7 +424,7 @@
     if (!view.notes.length) { toast('这份谱子还是空的，先在下面「编辑谱子」里点几个音符。'); return; }
     await A.ensure();
     const p = provider();
-    if (S.mode === 'tempo' && S.source !== 'metro' && !(p && p.ready)) {
+    if (S.mode === 'tempo' && !free() && !(p && p.ready)) {
       toast(S.source === 'apple' ? '先在「伴奏音乐」里连接 Apple Music 并选一首歌。' : '先在「伴奏音乐」里选一个音频文件。');
       return;
     }
@@ -427,6 +442,10 @@
       view.setPlayhead(null);
       view.setCursor(view.notes[0]);
       say('打亮着的那一个音，打对了它就往前走');
+    } else if (S.source === 'ext') {
+      // Music plays in another app, so there is nothing to sync to: stay silent and start on the first hit.
+      clock = null;
+      waitForHit('先在另一个 App 里把音乐放起来，然后打第一下，我就开始跟');
     } else if (S.source === 'metro') {
       const lead = S.countIn ? 4 : 0;
       clock = metroClock(A.ctx.currentTime + 0.15 + (lead * 60) / S.bpm);
@@ -441,6 +460,7 @@
     }
     S.running = true;
     $('startBtn').textContent = '■ 停止';
+    $('againBtn').hidden = false;
     $('startBtn').classList.add('on');
     try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
   }
@@ -451,6 +471,7 @@
     if (S.mode === 'tempo' && p && p.ready && !ended) { try { p.pause(); } catch (e) { /* ignore */ } }
     if (view) { view.setPlayhead(null); view.setCursor(null); }
     $('startBtn').textContent = '▶ 开始';
+    $('againBtn').hidden = true;
     $('startBtn').classList.remove('on');
     if (wakeLock) { try { wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null; }
     const n = stats.good + stats.early + stats.late + stats.miss;
@@ -469,9 +490,9 @@
     const old = S.bpm;
     S.bpm = v;
     $('bpm').value = v;
-    if (S.running && S.mode === 'tempo' && S.source === 'metro' && clock && clock.rebase) { clock.rebase(old); sched.next = null; }
+    if (S.running && S.mode === 'tempo' && free() && clock && clock.rebase) { clock.rebase(old); sched.next = null; }
     if (!silent) {
-      if (S.source === 'metro' && score && !score.preset) { score.bpm = v; saveCustom(); }
+      if (free() && score && !score.preset) { score.bpm = v; saveCustom(); }
       saveSongSync();
     }
     saveSettings();
@@ -481,7 +502,7 @@
     const wall = performance.now() / 1000;
     if (taps.length && wall - taps[taps.length - 1].wall > 2.5) taps.length = 0;
     const p = provider();
-    const playing = S.source !== 'metro' && p && p.ready && p.isPlaying();
+    const playing = !free() && p && p.ready && p.isPlaying();
     taps.push({ wall, media: playing ? p.getTime() : null });
     if (taps.length > 16) taps.shift();
     const n = taps.length;
@@ -535,6 +556,7 @@
     S.source = src;
     document.querySelectorAll('#srcSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === src)));
     $('paneMetro').hidden = src !== 'metro';
+    $('paneExt').hidden = src !== 'ext';
     $('paneApple').hidden = src !== 'apple';
     $('paneFile').hidden = src !== 'file';
     const p = provider();
@@ -542,6 +564,7 @@
     if (p && p.ready) onSongLoaded(p);
     $('bpmLbl').textContent = src === 'metro' ? '速度' : '歌曲速度';
     $('optCount').disabled = src !== 'metro';
+    $('optMetro').disabled = $('optDemo').disabled = src === 'ext';
     saveSettings();
   }
   function setMode(m) {
@@ -776,8 +799,8 @@
     $('cal').value = S.cal == null ? '' : S.cal;
     $('songVol').value = S.vol;
     setSens(S.sens);
-    if (S.source !== 'metro') S.source = 'metro'; // a song has to be picked again after a reload
-    setSource('metro');
+    if (S.source === 'apple' || S.source === 'file') S.source = 'metro'; // a song has to be picked again after a reload
+    setSource(S.source);
     setMode(S.mode);
     loadScore(S.scoreId, true);
 
@@ -785,9 +808,10 @@
     $('modeSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
     $('srcSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setSource(b.dataset.src); });
     $('startBtn').addEventListener('click', () => (S.running ? stop() : start()));
+    $('againBtn').addEventListener('click', restartNow);
     $('bpm').addEventListener('change', (e) => setBpm(e.target.value));
-    $('bpmDown').addEventListener('click', () => setBpm(S.bpm - (S.source === 'metro' ? 4 : 1)));
-    $('bpmUp').addEventListener('click', () => setBpm(S.bpm + (S.source === 'metro' ? 4 : 1)));
+    $('bpmDown').addEventListener('click', () => setBpm(S.bpm - (free() ? 4 : 1)));
+    $('bpmUp').addEventListener('click', () => setBpm(S.bpm + (free() ? 4 : 1)));
     $('tapBtn').addEventListener('click', tap);
     $('optMetro').addEventListener('change', (e) => { S.metro = e.target.checked; saveSettings(); });
     $('optCount').addEventListener('change', (e) => { S.countIn = e.target.checked; saveSettings(); });
