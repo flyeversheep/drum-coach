@@ -853,10 +853,15 @@
     $('ioExport').addEventListener('click', () => exportScores([score]));
     $('ioExportAll').addEventListener('click', () => exportScores(custom.filter((s) => DC.notesAt(s).some((c) => c.length))));
     // A link ending in #import=... loads its scores once, then the address is cleaned up so a reload does not overwrite later edits.
-    if (/^#import=/.test(location.hash)) {
+    const importFromAddress = () => {
+      if (!/^#import=/.test(location.hash)) return;
       importCode(location.hash);
       history.replaceState(null, '', location.pathname + location.search);
-    }
+    };
+    importFromAddress();
+    // Pasting an import link into a tab that already shows this page changes only the part after "#",
+    // which does not reload the page, so listen for that as well.
+    window.addEventListener('hashchange', importFromAddress);
 
     document.addEventListener('keydown', (e) => {
       if (e.code !== 'Space' || e.repeat) return;
