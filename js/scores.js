@@ -49,7 +49,89 @@
       return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
     },
   };
+  const bytesTo64 = (bytes) => {
+    let bin = '';
+    bytes.forEach((c) => (bin += String.fromCharCode(c)));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+  const bytesFrom64 = (code) => {
+    const t = code.replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(t + '==='.slice((t.length + 3) % 4)), (c) => c.charCodeAt(0));
+  };
+  const rowBits = (row) => parseInt(row.replace(/x/g, '1').replace(/-/g, '0'), 2);
+  const bitsRow = (v) => v.toString(2).padStart(16, '0').replace(/1/g, 'x').replace(/0/g, '-');
+
+  // Version 2: binary, about a quarter the length of version 1. Codes start with "2".
+  // Layout: count, then per score: piece index (or 255 + id string), name, tip, bpm*10 (2 bytes),
+  // distinct bars (instrument mask + 2 bytes per used instrument), bar order (4 bits each when it fits).
   DC.packScores = function (list) {
+    const out = [];
+    const str = (t) => { const b = new TextEncoder().encode(t).slice(0, 255); out.push(b.length, ...b); };
+    out.push(list.length);
+    list.forEach((sc) => {
+      const known = DC.PIECES.findIndex((p) => p.id === sc.id);
+      if (known >= 0 && known < 255) out.push(known); else { out.push(255); str(sc.id); }
+      str(known >= 0 && DC.PIECES[known].name === sc.name ? '' : sc.name);
+      str(sc.tip || '');
+      const bpm = Math.round(sc.bpm * 10);
+      out.push(bpm >> 8, bpm & 255);
+      const pats = [], seq = [];
+      sc.bars.forEach((bar) => {
+        const key = DC.INSTR.map((I) => bar[I.id]).join('|');
+        let i = pats.indexOf(key);
+        if (i < 0) i = pats.push(key) - 1;
+        seq.push(i);
+      });
+      out.push(pats.length);
+      pats.forEach((key) => {
+        const rows = key.split('|').map(rowBits);
+        out.push(rows.reduce((m, v, k) => (v ? m | (1 << k) : m), 0));
+        rows.forEach((v) => { if (v) out.push(v >> 8, v & 255); });
+      });
+      out.push(seq.length);
+      if (pats.length <= 16) for (let i = 0; i < seq.length; i += 2) out.push((seq[i] << 4) | (seq[i + 1] || 0));
+      else out.push(...seq);
+    });
+    return '2' + bytesTo64(Uint8Array.from(out));
+  };
+  function unpackV2(code) {
+    const d = bytesFrom64(code.slice(1));
+    let at = 0;
+    const u8 = () => { if (at >= d.length) throw new Error('format'); return d[at++]; };
+    const str = () => { const n = u8(); if (at + n > d.length) throw new Error('format'); at += n; return new TextDecoder().decode(d.subarray(at - n, at)); };
+    const count = u8();
+    if (count < 1 || count > 50) throw new Error('format');
+    const list = [];
+    for (let k = 0; k < count; k++) {
+      const idx = u8();
+      const piece = idx === 255 ? null : DC.PIECES[idx];
+      const id = piece ? piece.id : str();
+      if (idx !== 255 && !piece) throw new Error('format');
+      if (!/^[\w-]{1,40}$/.test(id)) throw new Error('format');
+      const name = str() || (piece ? piece.name : '谱子');
+      const tip = str();
+      const bpm = ((u8() << 8) | u8()) / 10;
+      const np = u8();
+      if (np < 1) throw new Error('format');
+      const pats = [];
+      for (let i = 0; i < np; i++) {
+        const mask = u8(), parts = {};
+        DC.INSTR.forEach((I, j) => { parts[I.id] = bitsRow(mask & (1 << j) ? (u8() << 8) | u8() : 0); });
+        pats.push(parts);
+      }
+      const nb = u8();
+      if (nb < 1 || nb > 64) throw new Error('format');
+      const seq = [];
+      if (np <= 16) for (let i = 0; i < nb; i += 2) { const v = u8(); seq.push(v >> 4, v & 15); }
+      else for (let i = 0; i < nb; i++) seq.push(u8());
+      seq.length = nb;
+      if (seq.some((i) => i >= np)) throw new Error('format');
+      list.push({ id, name: name.slice(0, 80), bpm: Math.min(240, Math.max(30, bpm || 80)), tip: tip.slice(0, 200), bars: seq.map((i) => DC.bar(pats[i])) });
+    }
+    return list;
+  }
+  // Version 1 (JSON text) is still read so that older links keep working.
+  DC.packScoresV1 = function (list) {
     return b64.enc(JSON.stringify({
       v: 1,
       s: list.map((sc) => {
@@ -65,6 +147,7 @@
     }));
   };
   DC.unpackScores = function (code) {
+    if (code[0] === '2') return unpackV2(code);
     const d = JSON.parse(b64.dec(code));
     if (!d || d.v !== 1 || !Array.isArray(d.s) || !d.s.length || d.s.length > 50) throw new Error('format');
     return d.s.map((x) => {
@@ -141,6 +224,7 @@
   ];
   DC.PRESETS.forEach((p) => (p.preset = true));
 
+  // Version 2 links refer to these by position, so only ever add new pieces at the end of DC.PIECES.
   // Pieces from the player's own books. Only the titles are known here: each starts as four empty
   // bars and is copied into "my scores" on first run, where the notes are entered with the editor.
   const piece = (book, list, title, by) => ({
