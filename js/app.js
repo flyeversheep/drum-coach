@@ -669,6 +669,36 @@
     });
   }
 
+  // ---- import / export --------------------------------------------------
+  function importCode(text) {
+    let code = String(text || '').trim();
+    const m = code.match(/#import=([\w-]+)/);
+    if (m) code = m[1];
+    let list;
+    try { list = DC.unpackScores(code); } catch (e) { toast('这段代码读不出来，请完整复制后再试一次。'); return false; }
+    if (S.running) stop();
+    list.forEach((s) => {
+      const i = custom.findIndex((c) => c.id === s.id);
+      if (i >= 0) custom[i] = s; else custom.push(s);
+    });
+    saveCustom();
+    score = null;
+    fillScoreSelect();
+    loadScore(list[0].id);
+    toast(`已导入 ${list.length} 份谱子：${list.map((s) => s.name).join('、')}`);
+    return true;
+  }
+  function exportScores(list) {
+    if (!list.length) { toast('还没有自己的谱子可以导出。'); return; }
+    const link = location.origin + location.pathname + '#import=' + DC.packScores(list);
+    const box = $('ioBox');
+    box.value = link;
+    box.select();
+    const done = () => toast('导出链接已复制。把它存到备忘录里；以后在任何设备上打开这个链接，谱子就会导入进去。');
+    if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, () => toast('导出链接在上面的框里，请手动复制保存。'));
+    else toast('导出链接在上面的框里，请手动复制保存。');
+  }
+
   // ---- wiring -----------------------------------------------------------
   function init() {
     DC._onsets = [];
@@ -772,6 +802,15 @@
       if (score.bars.length <= 1) return;
       ensureCustom(); score.bars.splice(edBar, 1); edBar = Math.min(edBar, score.bars.length - 1); afterEdit();
     });
+
+    $('ioImport').addEventListener('click', () => { if (importCode($('ioBox').value)) $('ioBox').value = ''; });
+    $('ioExport').addEventListener('click', () => exportScores([score]));
+    $('ioExportAll').addEventListener('click', () => exportScores(custom.filter((s) => DC.notesAt(s).some((c) => c.length))));
+    // A link ending in #import=... loads its scores once, then the address is cleaned up so a reload does not overwrite later edits.
+    if (/^#import=/.test(location.hash)) {
+      importCode(location.hash);
+      history.replaceState(null, '', location.pathname + location.search);
+    }
 
     document.addEventListener('keydown', (e) => {
       if (e.code !== 'Space' || e.repeat) return;

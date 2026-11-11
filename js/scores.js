@@ -35,6 +35,53 @@
     return out;
   };
 
+  // Compact text form of one or more scores, for moving them between devices without a server.
+  // Each distinct bar is 24 hex digits (16 bits per instrument); "q" lists which bar plays when.
+  const b64 = {
+    enc(str) {
+      let bin = '';
+      new TextEncoder().encode(str).forEach((c) => (bin += String.fromCharCode(c)));
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    },
+    dec(code) {
+      const s = code.replace(/-/g, '+').replace(/_/g, '/');
+      const bin = atob(s + '==='.slice((s.length + 3) % 4));
+      return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+    },
+  };
+  DC.packScores = function (list) {
+    return b64.enc(JSON.stringify({
+      v: 1,
+      s: list.map((sc) => {
+        const p = [], q = [];
+        sc.bars.forEach((bar) => {
+          const hex = DC.INSTR.map((I) => parseInt(bar[I.id].replace(/x/g, '1').replace(/-/g, '0'), 2).toString(16).padStart(4, '0')).join('');
+          let i = p.indexOf(hex);
+          if (i < 0) i = p.push(hex) - 1;
+          q.push(i);
+        });
+        return { id: sc.id, n: sc.name, b: sc.bpm, t: sc.tip || '', p, q };
+      }),
+    }));
+  };
+  DC.unpackScores = function (code) {
+    const d = JSON.parse(b64.dec(code));
+    if (!d || d.v !== 1 || !Array.isArray(d.s) || !d.s.length || d.s.length > 50) throw new Error('format');
+    return d.s.map((x) => {
+      const ok = /^[\w-]{1,40}$/.test(x.id) && typeof x.n === 'string' && x.n.length <= 80 && Array.isArray(x.p) && Array.isArray(x.q)
+        && x.q.length >= 1 && x.q.length <= 64 && x.p.every((h) => /^[0-9a-f]{24}$/.test(h)) && x.q.every((i) => Number.isInteger(i) && i >= 0 && i < x.p.length);
+      if (!ok) throw new Error('format');
+      const bars = x.p.map((h) => {
+        const parts = {};
+        DC.INSTR.forEach((I, k) => {
+          parts[I.id] = parseInt(h.slice(k * 4, k * 4 + 4), 16).toString(2).padStart(16, '0').replace(/1/g, 'x').replace(/0/g, '-');
+        });
+        return parts;
+      });
+      return { id: x.id, name: x.n, bpm: Math.min(240, Math.max(30, Number(x.b) || 80)), tip: String(x.t || '').slice(0, 200), bars: x.q.map((i) => DC.bar(bars[i])) };
+    });
+  };
+
   const HH8 = 'x-x-x-x-x-x-x-x-';
   const HH4 = 'x---x---x---x---';
   const SN24 = '----x-------x---';
