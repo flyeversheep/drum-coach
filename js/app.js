@@ -15,10 +15,12 @@
 
   // ---- state ------------------------------------------------------------
   const S = Object.assign(
-    { bpm: 76, mode: 'tempo', source: 'metro', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true },
+    { bpm: 76, mode: 'tempo', source: 'ext', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true },
     store.get('settings', {})
   );
   S.running = false;
+  // One-time switch for devices set up before "music from another app" became the default source.
+  if (!S.extDefault) { S.source = 'ext'; S.extDefault = true; }
   const saveSettings = () => {
     const { running, ...keep } = S;
     store.set('settings', keep);
@@ -134,7 +136,8 @@
     score = allScores().find((s) => s.id === id) || DC.PRESETS[3];
     S.scoreId = score.id;
     $('scoreSel').value = score.id;
-    if (!keepBpm && free() && score.bpm) setBpm(score.bpm, true);
+    // With outside music the tempo always comes from the piece (the speed printed in the book).
+    if ((S.source === 'ext' || (!keepBpm && free())) && score.bpm) setBpm(score.bpm, true);
     rebuild();
     showTip();
     edBar = Math.min(edBar, score.bars.length - 1);
@@ -562,6 +565,7 @@
     const p = provider();
     $('songBar').hidden = !(p && p.ready);
     if (p && p.ready) onSongLoaded(p);
+    if (src === 'ext' && score && score.bpm) setBpm(score.bpm, true);
     $('bpmLbl').textContent = src === 'metro' ? '速度' : '歌曲速度';
     $('optCount').disabled = src !== 'metro';
     $('optMetro').disabled = $('optDemo').disabled = src === 'ext';
