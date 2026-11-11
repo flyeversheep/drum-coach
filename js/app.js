@@ -25,6 +25,15 @@
   };
   let custom = store.get('scores', []).map(DC.cloneScore);
   const saveCustom = () => store.set('scores', custom);
+  // Copy newly shipped pieces into "my scores" once, so they can be edited in place and deleted for good.
+  (function seedPieces() {
+    const seen = store.get('seededPieces', []);
+    const fresh = DC.PIECES.filter((p) => !seen.includes(p.id) && !custom.some((s) => s.id === p.id));
+    if (!fresh.length) return;
+    fresh.forEach((p) => custom.push(DC.cloneScore(p)));
+    saveCustom();
+    store.set('seededPieces', seen.concat(fresh.map((p) => p.id)));
+  })();
   const allScores = () => DC.PRESETS.concat(custom);
 
   let score = null, view = null, total = 16, minGap = 4, markAbs = [];
@@ -100,11 +109,15 @@
     const g1 = document.createElement('optgroup'); g1.label = '入门课程';
     DC.PRESETS.forEach((s) => g1.appendChild(new Option(s.name, s.id)));
     sel.appendChild(g1);
-    if (custom.length) {
-      const g2 = document.createElement('optgroup'); g2.label = '我的谱子';
-      custom.forEach((s) => g2.appendChild(new Option(s.name, s.id)));
-      sel.appendChild(g2);
-    }
+    const bookOf = (s) => DC.PIECE_BOOKS[s.id.split('-')[0]] || '我的谱子';
+    const groups = new Map();
+    custom.forEach((s) => { const k = bookOf(s); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
+    [...Object.values(DC.PIECE_BOOKS), '我的谱子'].forEach((label) => {
+      if (!groups.has(label)) return;
+      const g = document.createElement('optgroup'); g.label = label;
+      groups.get(label).forEach((s) => g.appendChild(new Option(s.name, s.id)));
+      sel.appendChild(g);
+    });
     sel.value = score ? score.id : S.scoreId;
   }
   function loadScore(id, keepBpm) {
@@ -112,13 +125,19 @@
     score = allScores().find((s) => s.id === id) || DC.PRESETS[3];
     S.scoreId = score.id;
     $('scoreSel').value = score.id;
-    $('scoreTip').textContent = score.tip || '';
-    $('scoreTip').hidden = !score.tip;
     if (!keepBpm && S.source === 'metro' && score.bpm) setBpm(score.bpm, true);
     rebuild();
+    showTip();
     edBar = Math.min(edBar, score.bars.length - 1);
     renderEditor();
     saveSettings();
+  }
+  function showTip() {
+    const empty = !view.notes.length;
+    const tip = empty ? '这份谱子还没有音符。打开下面的「编辑谱子」，照着书把音符点进去，会自动保存在这台设备上。' : score.tip || '';
+    $('scoreTip').textContent = tip;
+    $('scoreTip').hidden = !tip;
+    if (empty) $('editor').open = true;
   }
 
   // ---- feedback ---------------------------------------------------------
@@ -597,13 +616,13 @@
     S.scoreId = c.id;
     saveCustom();
     fillScoreSelect();
-    $('scoreTip').hidden = true;
   }
   function afterEdit() {
     if (S.running) stop();
     saveCustom();
     saveSettings();
     rebuild();
+    showTip();
     renderEditor();
   }
   function renderEditor() {
@@ -741,11 +760,11 @@
       saveCustom(); score = null; fillScoreSelect(); loadScore('rock8', true);
     });
     $('edAddBar').addEventListener('click', () => {
-      if (score.bars.length >= 32) return;
+      if (score.bars.length >= 64) return;
       ensureCustom(); score.bars.push(DC.bar()); edBar = score.bars.length - 1; afterEdit();
     });
     $('edDupBar').addEventListener('click', () => {
-      if (score.bars.length >= 32) return;
+      if (score.bars.length >= 64) return;
       ensureCustom(); score.bars.splice(edBar + 1, 0, DC.bar(score.bars[edBar])); edBar++; afterEdit();
     });
     $('edClearBar').addEventListener('click', () => { ensureCustom(); score.bars[edBar] = DC.bar(); afterEdit(); });

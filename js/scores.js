@@ -93,4 +93,31 @@
     },
   ];
   DC.PRESETS.forEach((p) => (p.preset = true));
+
+  // Pieces from the player's own books. Only the titles are known here: each starts as four empty
+  // bars and is copied into "my scores" on first run, where the notes are entered with the editor.
+  const piece = (book, list, title, by) => ({
+    id: `pc${book}-${list.toLowerCase()}`, name: `${list} · ${title} – ${by}`, bpm: 80, tip: '', bars: [B(), B(), B(), B()],
+  });
+  DC.PIECE_BOOKS = { pc1: 'Book 1', pc2: 'Book 2' };
+  DC.PIECES = [
+    piece(1, 'A1', 'Raptors', 'Daniel Bond'),
+    piece(1, 'A2', 'Pop Up', 'Claire Brock'),
+    piece(1, 'A3', 'Stressed Out', 'Twenty One Pilots'),
+    piece(1, 'B1', 'Pink Suit', 'Tamir Barzilay'),
+    piece(1, 'B2', 'You Know', 'Noam Lederman'),
+    piece(1, 'B3', 'We Will Rock You', 'Queen'),
+    piece(1, 'C1', 'Trailblazer', 'Jason Bowld'),
+    piece(1, 'C2', 'You Bet', 'Catherine Ring'),
+    piece(1, 'C3', 'Frosty Mornings', 'Lizzy Swinford'),
+    piece(2, 'A1', 'Funk For Geoff', 'Dan Banks and Dan Earley'),
+    piece(2, 'A2', 'Something Just Like This', 'The Chainsmokers and Coldplay'),
+    piece(2, 'A3', 'Spacey Funk', "Vicky O'Neon"),
+    piece(2, 'B1', 'Laguna', 'Daniel Bond'),
+    piece(2, 'B2', "Hard To Say I'm Sorry", 'Chicago'),
+    piece(2, 'B3', 'Ball And Biscuit', 'The White Stripes'),
+    piece(2, 'C1', 'Cuban Roots', 'Emily Gunton'),
+    piece(2, 'C2', 'Duck Walk', 'Noam Lederman'),
+    piece(2, 'C3', 'Rock, Paper, Scissors!', 'Chris Woodham'),
+  ];
 })();
