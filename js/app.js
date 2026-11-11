@@ -44,7 +44,10 @@
   const follow = { i: 0, lastT: null, gap: 0, est: [], laps: 0 };
   let calib = null;
   let wakeLock = null;
-  const GOOD_MS = { easy: 75, std: 50, hard: 32 };
+  // GOOD_MS: how close a hit must be to count as on time.
+  // REACH_MS: the furthest a hit may be from a note and still count as that note played early or late.
+  const GOOD_MS = { easy: 100, std: 65, hard: 40 };
+  const REACH_MS = { easy: 350, std: 250, hard: 150 };
   // After this many seconds without a hit the tracker goes back to the first note and waits there.
   const PAUSE_SEC = 5;
   const pause = { wait: false, lastOnset: 0, missRun: 0 };
@@ -176,8 +179,16 @@
     $('gaugeDot').hidden = true;
     showStats();
   }
-  function winMs() { return Math.min(130, minGap * clock.stepMs() * 0.5); }
-  function goodMs() { return Math.min(GOOD_MS[S.judge] || 50, winMs() * 0.7); }
+  // A hit belongs to the note it is nearest to: on each side a note "owns" half the gap to its
+  // neighbour, up to REACH_MS. Only a note nobody played near is a miss.
+  function sideLimit(abs, dir) { // in steps; dir = -1 for early hits, +1 for late hits
+    let gap = total;
+    for (let k = 1; k <= total; k++) if (expectedAt(abs + dir * k)) { gap = k; break; }
+    return Math.min((REACH_MS[S.judge] || 250) / clock.stepMs(), gap / 2);
+  }
+  // Typical window for this score, used to scale the early/late gauge.
+  function winMs() { return Math.min(REACH_MS[S.judge] || 250, minGap * clock.stepMs() * 0.5); }
+  function goodMs() { return Math.min(GOOD_MS[S.judge] || 65, winMs() * 0.6); }
   function showGauge(dms) {
     const w = winMs(), g = goodMs();
     $('gaugeZone').style.left = 50 - (g / w) * 50 + '%';
@@ -224,16 +235,19 @@
     if (!clock || !clock.active) return;
 
     const hp = clock.posAt(t - calSec());
+    const sm = clock.stepMs();
+    const reach = Math.ceil((REACH_MS[S.judge] || 250) / sm) + 1;
     let best = null, bd = Infinity;
-    for (let a = Math.floor(hp) - 3; a <= Math.ceil(hp) + 3; a++) {
+    for (let a = Math.floor(hp) - reach; a <= Math.ceil(hp) + reach; a++) {
       if (!expectedAt(a) || judge.done.has(a)) continue;
       const d = Math.abs(a - hp);
       if (d < bd) { bd = d; best = a; }
     }
-    const sm = clock.stepMs();
-    if (best != null && bd * sm <= winMs()) {
+    const limit = best == null ? 0 : sideLimit(best, hp >= best ? 1 : -1);
+    if (best != null && bd <= limit + 1e-6) {
       const dms = (hp - best) * sm;
-      record(best, Math.abs(dms) <= goodMs() ? 'good' : dms < 0 ? 'early' : 'late', dms);
+      const good = Math.min(GOOD_MS[S.judge] || 65, limit * sm * 0.6);
+      record(best, Math.abs(dms) <= good ? 'good' : dms < 0 ? 'early' : 'late', dms);
     } else if (hp > -0.5 || S.source !== 'metro') {
       stats.extra++;
       showStats();
@@ -324,10 +338,14 @@
 
     if (!A.micOn) return;
     // A note counts as missed once its window has passed, allowing for the mic's reporting delay.
-    const lag = clock.posAt(now - calSec() - 0.06) - winMs() / clock.stepMs();
-    if (judge.cursor == null || Math.abs(judge.cursor - lag) > 12) judge.cursor = Math.ceil(pos);
+    const lag = clock.posAt(now - calSec() - 0.06);
+    if (judge.cursor == null || Math.abs(judge.cursor - lag) > 16) judge.cursor = Math.ceil(pos);
     while (judge.cursor < lag) {
-      if (expectedAt(judge.cursor) && !judge.done.has(judge.cursor)) record(judge.cursor, 'miss', null);
+      const c = judge.cursor;
+      if (expectedAt(c)) {
+        if (c + sideLimit(c, 1) >= lag) break; // a late hit could still arrive for this note
+        if (!judge.done.has(c)) record(c, 'miss', null);
+      }
       judge.cursor++;
     }
     // Only with the metronome: a song keeps playing, so its position cannot follow the player.
@@ -439,7 +457,8 @@
     if (S.mode === 'follow') say(stats.good ? `打了 ${stats.good} 个音，真棒！` : '按「开始」，跟着谱子打');
     else if (n) {
       const avg = stats.devs.length ? stats.devs.reduce((a, b) => a + b, 0) / stats.devs.length : 0;
-      const lean = Math.abs(avg) < 15 ? '快慢刚刚好' : avg < 0 ? `整体偏早 ${Math.round(-avg)} 毫秒，别着急` : `整体偏晚 ${Math.round(avg)} 毫秒，再跟紧一点`;
+      const lean = Math.abs(avg) < 15 ? '快慢刚刚好' : avg < 0 ? `整体偏早 ${Math.round(-avg)} 毫秒，别着急`
+        : avg >= 70 ? `整体偏晚 ${Math.round(avg)} 毫秒（每次都偏晚这么多的话，先做一次「自动校准」）` : `整体偏晚 ${Math.round(avg)} 毫秒，再跟紧一点`;
       say(`${n} 个音里准了 ${stats.good} 个，得分 ${scoreNow()} · ${lean}`, scoreNow() >= 80 ? 'good' : '');
     } else say('按「开始」，跟着谱子打');
   }
