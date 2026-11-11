@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>鼓点跟练</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <ellipse cx="24" cy="19" rx="17" ry="7"/><path d="M7 19v12c0 3.9 7.6 7 17 7s17-3.100 17-7V19"/>
+      <path d="M13 25.200v11M24 26v12M35 25.200v11" class="thin"/><path d="M30 4 19 17M38 8 27 18" class="stick"/>
+    </svg>
+    <div>
+      <h1>鼓点跟练</h1>
+      <p>看着谱子打，麦克风帮你听打到哪儿了</p>
+    </div>
+  </header>
+
+  <section class="panel stage" aria-label="谱子">
+    <div class="stage-head">
+      <label class="field grow"><span>谱子</span>
+        <select id="scoreSel"></select>
+      </label>
+      <div class="seg" id="modeSeg" role="group" aria-label="练习方式">
+        <button type="button" data-mode="tempo" aria-pressed="true">跟节拍</button>
+        <button type="button" data-mode="follow" aria-pressed="false">慢慢来（等我打）</button>
+      </div>
+    </div>
+    <p class="tip" id="scoreTip"></p>
+
+    <div id="score" class="score"></div>
+
+    <ul class="legend" aria-label="音符颜色">
+      <li><i class="k cym">×</i>镲（上面圈起来的是吊镲）</li>
+      <li><i class="k sn">●</i>军鼓</li>
+      <li><i class="k tom">●</i>嗵鼓</li>
+      <li><i class="k bd">●</i>底鼓</li>
+    </ul>
+
+    <div class="feedback">
+      <div class="verdict" id="verdict" aria-live="polite">按「开始」，跟着谱子打</div>
+      <div class="gauge" id="gauge" aria-hidden="true">
+        <span>早</span>
+        <div class="track"><div class="zone" id="gaugeZone"></div><div class="dot" id="gaugeDot" hidden></div></div>
+        <span>晚</span>
+      </div>
+      <dl class="stats">
+        <div class="s-good"><dt>准</dt><dd id="stGood">0</dd></div>
+        <div class="s-off"><dt>早</dt><dd id="stEarly">0</dd></div>
+        <div class="s-off"><dt>晚</dt><dd id="stLate">0</dd></div>
+        <div class="s-miss"><dt>漏</dt><dd id="stMiss">0</dd></div>
+        <div><dt>多打</dt><dd id="stExtra">0</dd></div>
+        <div class="s-score"><dt>得分</dt><dd id="stScore">–</dd></div>
+      </dl>
+    </div>
+
+    <div class="transport">
+      <button type="button" id="startBtn" class="go">▶ 开始</button>
+      <div class="bpm">
+        <span class="lbl" id="bpmLbl">速度</span>
+        <button type="button" id="bpmDown" aria-label="慢一点">−</button>
+        <input id="bpm" type="number" min="30" max="240" step="1" inputmode="decimal" aria-labelledby="bpmLbl">
+        <button type="button" id="bpmUp" aria-label="快一点">+</button>
+        <span class="unit">BPM</span>
+        <button type="button" id="tapBtn" class="ghost">点拍子</button>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="optMetro"> 节拍器</label>
+        <label><input type="checkbox" id="optCount"> 预备拍</label>
+        <label><input type="checkbox" id="optDemo"> 示范鼓声</label>
+        <label class="field inline"><span>判定</span>
+          <select id="optJudge">
+            <option value="easy">宽松</option>
+            <option value="std">标准</option>
+            <option value="hard">严格</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <p class="toast" id="toast" role="status" hidden></p>
+  </section>
+
+  <div class="cols">
+    <section class="panel" aria-label="麦克风">
+      <h2>麦克风</h2>
+      <div class="row">
+        <button type="button" id="micBtn" class="ghost strong">打开麦克风</button>
+        <span class="hit-led" id="hitLed" aria-hidden="true"></span>
+        <span class="muted" id="micState">还没打开</span>
+      </div>
+      <div class="meter" aria-hidden="true">
+        <div class="fill" id="meterFill"></div>
+        <div class="thr" id="meterThr"></div>
+      </div>
+      <label class="field"><span>灵敏度 <small>（竖线是门槛：打鼓时音量条要冲过竖线，不打时要在竖线左边）</small></span>
+        <input type="range" id="sens" min="0" max="100" step="1">
+      </label>
+      <div class="row">
+        <label class="field inline"><span>声音延迟</span>
+          <input type="number" id="cal" min="0" max="500" step="5" inputmode="numeric"> <span class="unit">毫秒</span>
+        </label>
+        <button type="button" id="calBtn" class="ghost">自动校准</button>
+      </div>
+      <p class="muted small" id="calMsg">校准：让麦克风听见音箱里的滴答声即可；戴耳机时，请跟着滴答声拍手。蓝牙耳机延迟大，换了设备要重新校准。</p>
+    </section>
+
+    <section class="panel" aria-label="伴奏音乐">
+      <h2>伴奏音乐</h2>
+      <div class="seg" id="srcSeg" role="group" aria-label="音乐来源">
+        <button type="button" data-src="metro" aria-pressed="true">只用节拍器</button>
+        <button type="button" data-src="apple" aria-pressed="false">Apple Music</button>
+        <button type="button" data-src="file" aria-pressed="false">本地音频文件</button>
+      </div>
+
+      <div id="paneMetro" class="pane">
+        <p class="muted small">没有音乐，跟着节拍器练。想跟着手机或音箱里放的歌练，也可以：跟着歌按「点拍子」定好速度，关掉节拍器，在第 1 拍按「开始」。</p>
+      </div>
+
+      <div id="paneApple" class="pane" hidden>
+        <div id="appleSetup">
+          <p class="muted small">需要一个 Apple 开发者令牌（Developer Token）才能连接 Apple Music，怎么拿见 README。令牌只保存在这台设备的浏览器里。</p>
+          <label class="field"><span>开发者令牌</span>
+            <textarea id="appleToken" rows="3" spellcheck="false" placeholder="eyJhbGciOiJFUzI1NiIs…"></textarea>
+          </label>
+          <div class="row">
+            <button type="button" id="appleConnect" class="ghost strong">连接 Apple Music</button>
+            <span class="muted small" id="appleTokenInfo"></span>
+          </div>
+        </div>
+        <div id="appleMain" hidden>
+          <div class="row">
+            <span class="muted small" id="appleStatus"></span>
+            <button type="button" id="appleAuth" class="ghost">登录 Apple Music</button>
+            <button type="button" id="appleReset" class="link">换令牌</button>
+          </div>
+          <form id="appleSearchForm" class="row search">
+            <input type="search" id="appleQuery" placeholder="搜歌名或歌手" autocomplete="off">
+            <select id="appleScope" aria-label="搜索范围">
+              <option value="catalog">Apple Music 曲库</option>
+              <option value="library">我的资料库</option>
+            </select>
+            <button type="submit" class="ghost strong">搜索</button>
+          </form>
+          <ul id="appleResults" class="results"></ul>
+        </div>
+      </div>
+
+      <div id="paneFile" class="pane" hidden>
+        <label class="field"><span>选一个音频文件（mp3 / m4a / wav，不能是有版权保护的 Apple Music 下载文件）</span>
+          <input type="file" id="fileInput" accept="audio/*">
+        </label>
+      </div>
+
+      <div id="songBar" class="songbar" hidden>
+        <div class="now"><strong id="songTitle">还没选歌</strong><span class="muted small" id="songSub"></span></div>
+        <div class="row seek">
+          <span class="time" id="songCur">0:00</span>
+          <input type="range" id="songSeek" min="0" max="100" step="0.1" value="0" aria-label="播放位置">
+          <span class="time" id="songDur">0:00</span>
+        </div>
+        <div class="row">
+          <label class="field inline"><span>播放速度</span>
+            <select id="songRate">
+              <option value="0.5">50%</option><option value="0.6">60%</option><option value="0.7">70%</option>
+              <option value="0.8">80%</option><option value="0.9">90%</option><option value="1" selected>100%</option>
+            </select>
+          </label>
+          <label class="field inline"><span>音量</span>
+            <input type="range" id="songVol" min="0" max="1" step="0.01" value="0.8">
+          </label>
+        </div>
+        <div class="row">
+          <label class="field inline"><span>第 1 拍在</span>
+            <input type="number" id="songOffset" step="0.01" inputmode="decimal"> <span class="unit">秒</span>
+          </label>
+          <button type="button" id="offDown" class="ghost" aria-label="第一拍提前 20 毫秒">−</button>
+          <button type="button" id="offUp" class="ghost" aria-label="第一拍推后 20 毫秒">+</button>
+          <button type="button" id="markOne" class="ghost">现在是第 1 拍</button>
+        </div>
+        <p class="muted small">对拍子：播放时跟着音乐按上面的「点拍子」8 下（从某一小节的第 1 拍开始按），会自动算出歌曲速度和第 1 拍位置。打开「节拍器」听滴答声和音乐是否重合，再用 − / + 微调。设置会按歌曲记住。</p>
+      </div>
+    </section>
+  </div>
+
+  <details class="panel editor" id="editor">
+    <summary><h2>编辑谱子</h2><span class="muted small">点格子加减音符，改内置谱子会自动另存一份</span></summary>
+    <div class="row">
+      <label class="field grow"><span>名字</span><input type="text" id="edName" maxlength="30"></label>
+      <button type="button" id="edNew" class="ghost">新建空白谱子</button>
+      <button type="button" id="edDelete" class="ghost danger">删除这份谱子</button>
+    </div>
+    <div class="row" id="edBars" role="tablist" aria-label="小节"></div>
+    <div class="grid-wrap"><div id="edGrid" class="grid"></div></div>
+    <div class="row">
+      <button type="button" id="edAddBar" class="ghost">＋ 加一小节</button>
+      <button type="button" id="edDupBar" class="ghost">复制这一小节</button>
+      <button type="button" id="edClearBar" class="ghost">清空这一小节</button>
+      <button type="button" id="edDelBar" class="ghost">删掉这一小节</button>
+    </div>
+  </details>
+
+  <footer class="foot muted small">
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。
+  </footer>
+</div>
+
+<script src="js/scores.js"></script>
+<script src="js/notation.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/music.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
