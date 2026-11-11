@@ -15,7 +15,7 @@
 
   // ---- state ------------------------------------------------------------
   const S = Object.assign(
-    { bpm: 76, mode: 'tempo', source: 'metro', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8 },
+    { bpm: 76, mode: 'tempo', source: 'metro', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true },
     store.get('settings', {})
   );
   S.running = false;
@@ -45,6 +45,9 @@
   let calib = null;
   let wakeLock = null;
   const GOOD_MS = { easy: 75, std: 50, hard: 32 };
+  // After this many seconds without a hit the tracker goes back to the first note and waits there.
+  const PAUSE_SEC = 5;
+  const pause = { wait: false, lastOnset: 0, missRun: 0 };
 
   const provider = () => (S.source === 'apple' ? DC.apple : S.source === 'file' ? DC.filePlayer : null);
   const calSec = () => (S.cal == null ? 0.06 : S.cal / 1000);
@@ -102,6 +105,7 @@
       follow.i = Math.min(follow.i, view.notes.length - 1);
       view.setCursor(view.notes[follow.i]);
     }
+    if (S.running && pause.wait && view.notes.length) view.setCursor(view.notes[0]);
   }
   function fillScoreSelect() {
     const sel = $('scoreSel');
@@ -186,6 +190,7 @@
     judge.done.set(abs, res);
     if (judge.done.size > 600) for (const k of judge.done.keys()) { if (k < abs - 4 * total) judge.done.delete(k); }
     stats[res]++;
+    pause.missRun = res === 'miss' ? pause.missRun + 1 : 0;
     const step = mod(abs, total);
     view.setMark(step, res);
     markAbs[step] = abs;
@@ -213,7 +218,9 @@
     ledTimer = setTimeout(() => led.classList.remove('on'), 110);
     if (calib) { calib.onsets.push(t); return; }
     if (!S.running) return;
+    pause.lastOnset = t;
     if (S.mode === 'follow') return followHit(t);
+    if (pause.wait) return restartOnHit(t);
     if (!clock || !clock.active) return;
 
     const hp = clock.posAt(t - calSec());
@@ -262,14 +269,48 @@
     showStats();
   }
 
+  // ---- restart after a pause --------------------------------------------
+  // The mic cannot tell where in a piece the player is (many bars sound alike), so the rule is simple:
+  // a long silence means "starting over", and tracking resumes from the first note.
+  function followBackToStart() {
+    Object.assign(follow, { i: 0, lastT: null, gap: 0, est: [] });
+    view.clearMarks();
+    view.setCursor(view.notes[0]);
+    say('停了一会儿，从头再来：打第一个音');
+  }
+  function waitForHit() {
+    pause.wait = true;
+    view.clearMarks();
+    markAbs.fill(null);
+    view.setPlayhead(null);
+    view.setCursor(view.notes[0]);
+    say('停了一会儿，从头再来：你打第一下，我就跟上');
+  }
+  function restartOnHit(t) {
+    pause.wait = false;
+    resetStats();
+    judge.done.clear();
+    judge.cursor = null;
+    sched.next = null;
+    const first = view.notes[0];
+    clock = metroClock(t - calSec() - (first * 15) / S.bpm); // the hit just heard is the first note, exactly on time
+    view.setCursor(null);
+    record(first, 'good', 0);
+  }
+
   // ---- engine loop ------------------------------------------------------
   function scheduleStep(abs, t) {
     if (S.metro && mod(abs, 4) === 0) A.click(t, mod(abs, 16) === 0);
     if (S.demo && expectedAt(abs)) view.cols[mod(abs, total)].forEach((id) => A.drum(id, t));
   }
   function tick() {
-    if (!S.running || S.mode !== 'tempo' || !clock) return;
+    if (!S.running) return;
     const now = A.ctx.currentTime;
+    if (S.mode === 'follow') {
+      if (S.autoRestart && follow.i !== 0 && follow.lastT != null && now - follow.lastT >= PAUSE_SEC) followBackToStart();
+      return;
+    }
+    if (!clock || pause.wait) return;
     clock.update(now);
     if (!clock.active) return;
     const pos = clock.posAt(now);
@@ -289,6 +330,8 @@
       if (expectedAt(judge.cursor) && !judge.done.has(judge.cursor)) record(judge.cursor, 'miss', null);
       judge.cursor++;
     }
+    // Only with the metronome: a song keeps playing, so its position cannot follow the player.
+    if (S.autoRestart && S.source === 'metro' && pause.missRun >= 2 && now - Math.max(pause.lastOnset, clock.timeAt(0)) >= PAUSE_SEC) waitForHit();
   }
   let meterPeak = 0, lastSeekUi = 0;
   function draw() {
@@ -304,7 +347,7 @@
       $('songSeek').value = t;
       $('songCur').textContent = fmt(t);
     }
-    if (!S.running || S.mode !== 'tempo' || !clock || !view) return;
+    if (!S.running || S.mode !== 'tempo' || !clock || !view || pause.wait) return;
     if (!clock.active) { view.setPlayhead(null); return; }
     const pos = clock.posAt(A.ctx.currentTime);
     if (S.source === 'metro' && pos < 0) {
@@ -360,6 +403,7 @@
     judge.done.clear();
     judge.cursor = null;
     sched.next = null;
+    Object.assign(pause, { wait: false, lastOnset: 0, missRun: 0 });
     if (S.mode === 'follow') {
       Object.assign(follow, { i: 0, lastT: null, gap: 0, est: [], laps: 0 });
       view.setPlayhead(null);
@@ -732,6 +776,8 @@
       S.demo = e.target.checked; saveSettings();
       if (S.demo && A.micOn) toast('示范鼓声如果从音箱放出来，会被麦克风当成你打的。听示范时先别计较得分，或者戴耳机。');
     });
+    $('optRestart').checked = S.autoRestart;
+    $('optRestart').addEventListener('change', (e) => { S.autoRestart = e.target.checked; saveSettings(); });
     $('optJudge').addEventListener('change', (e) => { S.judge = e.target.value; saveSettings(); });
 
     $('micBtn').addEventListener('click', async () => { if (A.micOn) { A.stopMic(); showMic(); } else await ensureMic(); });
@@ -825,7 +871,7 @@
     setInterval(tick, 25);
     requestAnimationFrame(draw);
     // hooks for testing from the console
-    DC.debug = { S, stats, judge, follow, onOnset, get clock() { return clock; }, get view() { return view; } };
+    DC.debug = { S, stats, judge, follow, pause, onOnset, get clock() { return clock; }, get view() { return view; } };
   }
   init();
 })();
