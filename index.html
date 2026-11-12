@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>鼓点跟练</title>
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <div class="wrap">
@@ -173,7 +173,7 @@
         <div class="now"><strong id="songTitle">还没选歌</strong><span class="muted small" id="songSub"></span></div>
         <div class="row seek">
           <span class="time" id="songCur">0:00</span>
-          <input type="range" id="songSeek" min="0" max="100" step="0.1" value="0" aria-label="播放位置">
+          <input type="range" id="songSeek" min="0" max="100" step="0.01" value="0" aria-label="播放位置">
           <span class="time" id="songDur">0:00</span>
         </div>
         <div class="row">
@@ -226,15 +226,15 @@
   </details>
 
   <footer class="foot muted small">
-    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 17</span>
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 18</span>
   </footer>
 </div>
 
 <!-- Bump every ?v= number (and the version in the footer) together whenever a file changes, so devices never mix old and new files. -->
-<script src="js/scores.js?v=17"></script>
-<script src="js/notation.js?v=17"></script>
-<script src="js/audio.js?v=17"></script>
-<script src="js/music.js?v=17"></script>
-<script src="js/app.js?v=17"></script>
+<script src="js/scores.js?v=18"></script>
+<script src="js/notation.js?v=18"></script>
+<script src="js/audio.js?v=18"></script>
+<script src="js/music.js?v=18"></script>
+<script src="js/app.js?v=18"></script>
 </body>
 </html>

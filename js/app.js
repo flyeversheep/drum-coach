@@ -76,15 +76,28 @@
       },
     };
   }
+  // Browsers report playback time in steps (Safari especially): the value sits still, then jumps.
+  // A reading is exact right after a jump and stale until the next one, so the true clock is the
+  // upper edge of the readings measured against the page's own smooth timer.
+  function edge(off, raw, snap) {
+    if (off == null || Math.abs(raw - off) > snap) return raw;
+    return raw > off ? off + (raw - off) * 0.3 : off - 0.00005;
+  }
+  let ctxOff = null;
+  function smoothNow() { // audio-context time, without the steps
+    const perf = performance.now() / 1000;
+    ctxOff = edge(ctxOff, A.ctx.currentTime - perf, 0.2);
+    return perf + ctxOff;
+  }
   function mediaClock(p) {
-    let off = null; // media time minus (context time * rate), smoothed
+    let off = null; // media time minus (context time * rate)
     return {
       active: false,
       update(now) {
         this.active = p.isPlaying();
         if (!this.active) { off = null; return; }
         const raw = p.getTime() - now * p.rate;
-        if (off == null || Math.abs(raw - off) > 0.08) off = raw; else off += (raw - off) * 0.08;
+        off = edge(off, raw, 0.15);
       },
       posAt(t) { return (t * p.rate + off - S.songOffset) * S.bpm / 15; },
       timeAt(pos) { return (pos * 15 / S.bpm + S.songOffset - off) / p.rate; },
@@ -341,7 +354,7 @@
   }
   function tick() {
     if (!S.running) return;
-    const now = A.ctx.currentTime;
+    const now = smoothNow();
     if (S.mode === 'follow') {
       if (S.autoRestart && follow.i !== 0 && follow.lastT != null && now - follow.lastT >= PAUSE_SEC) followBackToStart();
       return;
@@ -380,16 +393,19 @@
     $('meterFill').style.width = levelFrac(meterPeak) * 100 + '%';
     const p = provider();
     const nowMs = performance.now();
-    if (p && p.ready && nowMs - lastSeekUi > 250 && !seeking) {
+    if (p && p.ready && nowMs - lastSeekUi > 40 && !seeking) {
       lastSeekUi = nowMs;
-      const d = p.getDuration(), t = p.getTime();
+      const d = p.getDuration();
+      // while playing, take the time from the smoothed clock so the bar glides instead of stepping
+      const live = S.running && S.mode === 'tempo' && clock && clock.active && !free();
+      const t = live ? clamp((clock.posAt(smoothNow()) * 15) / S.bpm + S.songOffset, 0, d || 1e9) : p.getTime();
       if (d) { $('songSeek').max = d; $('songDur').textContent = fmt(d); }
       $('songSeek').value = t;
       $('songCur').textContent = fmt(t);
     }
     if (!S.running || S.mode !== 'tempo' || !clock || !view || pause.wait) return;
     if (!clock.active) { view.setPlayhead(null); return; }
-    const pos = clock.posAt(A.ctx.currentTime);
+    const pos = clock.posAt(smoothNow());
     if (pos < 0) {
       view.setPlayhead(null);
       say(free() ? '预备… ' + clamp(Math.floor((pos + 16) / 4) + 1, 1, 4) : pos > -32 ? '预备… ' + (Math.floor((pos + 32) / 4) % 4 + 1) : '预备，听音乐');
