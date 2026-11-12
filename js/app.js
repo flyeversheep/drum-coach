@@ -15,7 +15,7 @@
 
   // ---- state ------------------------------------------------------------
   const S = Object.assign(
-    { bpm: 76, mode: 'tempo', source: 'ext', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true },
+    { bpm: 76, mode: 'tempo', source: 'ext', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true, trackKind: 'demo' },
     store.get('settings', {})
   );
   S.running = false;
@@ -551,19 +551,33 @@
     const n = norm(name);
     return custom.find((sc) => { const m = sc.name.match(/·\s*(.+?)\s*–/); const t = m ? norm(m[1]) : ''; return t.length >= 4 && n.includes(t); }) || null;
   }
+  // Each piece can hold two recordings: the demo (with drums) and the backing track (without).
+  const KIND_NAME = { demo: '示范（带鼓）', backing: '伴奏（不带鼓）' };
+  const kindOfFile = (name) => (/backing|without|minus/i.test(name) ? 'backing' : /demo|full|with.?drum/i.test(name) ? 'demo' : null);
+  // Files saved before there were two kinds sit under the bare score id; treat those as the demo.
+  const getTrack = async (id, kind) => (await DC.tracks.get(id + '|' + kind)) || (kind === 'demo' ? await DC.tracks.get(id) : null);
   async function loadTrackFor(id) {
-    const f = await DC.tracks.get(id);
-    if (S.source !== 'file' || !score || score.id !== id) return;
+    const kind = S.trackKind;
+    const [f, demo, backing] = await Promise.all([getTrack(id, kind), getTrack(id, 'demo'), getTrack(id, 'backing')]);
+    if (S.source !== 'file' || !score || score.id !== id || S.trackKind !== kind) return;
+    document.querySelectorAll('#kindSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === kind)));
+    const have = `示范${demo ? '已添加' : '还没有'}，伴奏${backing ? '已添加' : '还没有'}。`;
     if (f) {
       DC.filePlayer.load(f);
       onSongLoaded(DC.filePlayer, f);
-      $('fileState').textContent = `这首曲子的伴奏：${f.name}`;
+      $('fileState').textContent = `正在用${KIND_NAME[kind]}：${f.name}。${have}`;
     } else {
       DC.filePlayer.unload();
       $('songBar').hidden = true;
       if (score.bpm) setBpm(score.bpm, true);
-      $('fileState').textContent = '这首曲子还没有伴奏文件，在上面选一个。';
+      $('fileState').textContent = `这首曲子还没有${KIND_NAME[kind]}的文件，在上面添加。${have}`;
     }
+  }
+  function setTrackKind(kind) {
+    if (S.running) stop();
+    S.trackKind = kind;
+    saveSettings();
+    if (score) loadTrackFor(score.id);
   }
   async function addFiles(files) {
     if (S.running) stop();
@@ -572,16 +586,31 @@
     for (const f of files) {
       const sc = scoreForFile(f.name) || (files.length === 1 ? score : null);
       if (!sc) { lines.push(`${f.name}：没找到名字对得上的曲目，先选好曲目再单独添加这个文件`); continue; }
-      await DC.tracks.put(sc.id, f);
-      lines.push(`${f.name} → ${sc.name}`);
+      const kind = kindOfFile(f.name) || S.trackKind;
+      await DC.tracks.put(sc.id + '|' + kind, f);
+      lines.push(`${f.name} → ${sc.name} 的${KIND_NAME[kind]}`);
       if (!jump || sc.id === score.id) jump = sc.id;
+      if (files.length === 1) S.trackKind = kind;
     }
+    saveSettings();
     toast(lines.join('；'));
     if (jump && jump !== score.id) loadScore(jump); else loadTrackFor(score.id);
   }
   async function autoSync(p, file) {
     const bpm = (score && score.bpm) || S.bpm;
     try {
+      // A backing track without the click has no count-in to listen for, so borrow the timing of the
+      // demo of the same piece when there is one (the two recordings share a timeline).
+      const demo = S.trackKind === 'backing' ? await getTrack(score.id, 'demo') : null;
+      if (demo) {
+        const sv = store.get('song:file:' + demo.name, null);
+        const off = sv ? sv.offset : (await DC.findFirstBeat(demo, bpm)) + (COUNT_IN_BARS * 4 * 60) / bpm;
+        if (p.key !== 'file:' + file.name) return;
+        setBpm(sv ? sv.bpm : bpm, true);
+        setSongOffset(off);
+        toast(`已按示范版对拍：第 1 小节从 ${S.songOffset.toFixed(2)} 秒开始。伴奏里没有预备拍的滴答声，看屏幕上的「预备… 1 2 3 4」或打开「节拍器」来数拍。不准就用 − / + 微调。`);
+        return;
+      }
       const first = await DC.findFirstBeat(file, bpm);
       if (p.key !== 'file:' + file.name) return;
       setBpm(bpm, true);
@@ -889,6 +918,7 @@
       e.target.value = '';
       if (files.length) addFiles(files);
     });
+    $('kindSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setTrackKind(b.dataset.kind); });
     $('songSeek').addEventListener('input', (e) => { seeking = true; $('songCur').textContent = fmt(Number(e.target.value)); });
     $('songSeek').addEventListener('change', async (e) => {
       const p = provider();
