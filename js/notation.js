@@ -142,12 +142,10 @@
       if (r === shownRow) return;
       shownRow = r;
       if (r < 0) return;
-      const svg = rows[r].svg;
-      const top = svg.offsetTop - container.offsetTop;
-      const viewTop = container.scrollTop;
-      if (top < viewTop || top + svg.clientHeight > viewTop + container.clientHeight) {
-        container.scrollTo({ top: Math.max(0, top - 6), behavior: 'smooth' });
-      }
+      // Keep the line being played at the top of the box, so the lines that follow are visible below it.
+      // (Measured with getBoundingClientRect: SVG elements have no offsetTop.)
+      const top = rows[r].svg.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+      container.scrollTo({ top: Math.max(0, top - 6), behavior: 'smooth' });
     }
     return {
       total, cols, notes,
