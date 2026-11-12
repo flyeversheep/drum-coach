@@ -11,8 +11,11 @@
     return e;
   };
 
-  const G = { stepW: 26, padL: 20, left: 36, right: 8, y0: 62, h: 152, beam: -38 };
-  G.barW = G.padL + 16 * G.stepW;
+  // Notes are spaced evenly straight through the bar lines (a bar line sits halfway between the last
+  // note of one bar and the first of the next), so the playhead moves at one constant speed.
+  const G = { stepW: 26, left: 36, right: 8, y0: 62, h: 152, beam: -38 };
+  G.padL = G.stepW / 2;
+  G.barW = 16 * G.stepW;
   const Y = (rel) => G.y0 + rel;
   const BY = { CR: -10, HH: -5, T1: 5, SN: 15, T2: 25, BD: 35 };
 
