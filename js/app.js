@@ -254,20 +254,31 @@
 
   // ---- microphone hits --------------------------------------------------
   let ledTimer = 0;
-  function onOnset(t) {
-    DC._onsets.push(t);
-    if (DC._onsets.length > 400) DC._onsets.shift();
+  function flashLed() {
     const led = $('hitLed');
     led.classList.add('on');
     clearTimeout(ledTimer);
     ledTimer = setTimeout(() => led.classList.remove('on'), 110);
+  }
+  // A faint hit (quieter than the sensitivity line) counts only when it lands close to a note the
+  // score expects and nothing louder has claimed that note. Otherwise it is ignored, never "extra".
+  function onFaint(t) {
+    if (!S.running || S.mode !== 'tempo' || pause.wait || !clock || !clock.active) return;
+    if (judgeHit(t, true)) flashLed();
+  }
+  function onOnset(t) {
+    DC._onsets.push(t);
+    if (DC._onsets.length > 400) DC._onsets.shift();
+    flashLed();
     if (calib) { calib.onsets.push(t); return; }
     if (!S.running) return;
     pause.lastOnset = t;
     if (S.mode === 'follow') return followHit(t);
     if (pause.wait) return restartOnHit(t);
     if (!clock || !clock.active) return;
-
+    judgeHit(t, false);
+  }
+  function judgeHit(t, faint) {
     const hp = clock.posAt(t - calSec());
     const sm = clock.stepMs();
     const reach = Math.ceil((REACH_MS[S.judge] || 250) / sm) + 1;
@@ -278,16 +289,19 @@
       if (d < bd) { bd = d; best = a; }
     }
     const limit = best == null ? 0 : sideLimit(best, hp >= best ? 1 : -1);
-    if (best != null && bd <= limit + 1e-6) {
+    if (best != null && bd <= (faint ? limit * 0.6 : limit) + 1e-6) {
       const dms = (hp - best) * sm;
       const good = Math.min(GOOD_MS[S.judge] || 65, limit * sm * 0.6);
       record(best, Math.abs(dms) <= good ? 'good' : dms < 0 ? 'early' : 'late', dms);
       // With outside music the grid was placed by the player's first hit; let it settle onto their playing.
       if (S.source === 'ext' && clock.t0 != null) clock.t0 += (dms / 1000) * 0.15;
-    } else if (hp > -0.5 || !free()) {
+      pause.lastOnset = t;
+      return true;
+    } else if (!faint && (hp > -0.5 || !free())) {
       stats.extra++;
       showStats();
     }
+    return false;
   }
   function followHit(t) {
     const notes = view.notes;
@@ -921,6 +935,7 @@
   function init() {
     DC._onsets = [];
     A.onOnset = onOnset;
+    A.onFaint = onFaint;
     A.onLevel = (l) => { if (l > meterPeak) meterPeak = l; };
     DC.filePlayer.onEnded = DC.apple.onEnded = () => stop(true);
 
@@ -1049,7 +1064,7 @@
     setInterval(tick, 25);
     requestAnimationFrame(draw);
     // hooks for testing from the console
-    DC.debug = { S, stats, judge, follow, pause, onOnset, get clock() { return clock; }, get view() { return view; } };
+    DC.debug = { S, stats, judge, follow, pause, onOnset, onFaint, get clock() { return clock; }, get view() { return view; } };
   }
   init();
 })();

@@ -11,6 +11,9 @@
   // cymbal, or a hi-hat after a loud snare, shows up in its own band.
   function makeDetector(sr) {
     var thr = 0.03, last = -1, px = 0, py = 0, peak = 0, since = 0, pk = 0;
+    // Faint hits: the same sudden rise, but quieter than the threshold (a soft hi-hat between loud
+    // drums). They are reported separately; the app only believes one where the score expects a note.
+    var FAINT = 0.2, lastFaint = -1, pending = -1;
     var REFRACTORY = 0.075, reportEvery = Math.round(sr * 0.04);
     var k = function (fc) { return 1 - Math.exp(-2 * Math.PI * fc / sr); };
     var tc = function (sec) { return 1 - Math.exp(-1 / (sr * sec)); };
@@ -31,21 +34,31 @@
           var a = y < 0 ? -y : y;
           pk = a > pk ? a : pk * pkDecay; // short-lived peak, compared with the sensitivity threshold
           lpLo += aLo * (y - lpLo); lpMid += aMid * (y - lpMid); lpHi += aHi * (y - lpHi);
-          var b0 = lpLo, b1 = lpMid - lpLo, b2 = y - lpHi, hit = false;
+          var b0 = lpLo, b1 = lpMid - lpLo, b2 = y - lpHi, hit = false, soft = false;
           for (var n = 0; n < 3; n++) {
             var v = n === 0 ? b0 : n === 1 ? b1 : b2;
             if (v < 0) v = -v;
             fast[n] += aF[n] * (v - fast[n]);
-            if (fast[n] > RISE[n] * slow[n] && fast[n] > 0.12 * thr) hit = true;
+            if (fast[n] > RISE[n] * slow[n]) { if (fast[n] > 0.12 * thr) hit = true; else if (fast[n] > 0.12 * FAINT * thr) soft = true; }
             slow[n] += aS[n] * (fast[n] - slow[n]);
           }
+          var ts = t + i / sr;
           if (hit && pk > thr) {
-            var ts = t + i / sr;
             if (ts - last > REFRACTORY) {
-              last = ts;
+              // a loud hit often starts out looking faint: report it once, at the earlier moment
+              last = pending >= 0 ? pending : ts;
+              pending = -1;
               if (!out) out = { onsets: [] };
-              out.onsets.push(ts);
+              out.onsets.push(last);
             }
+          } else if ((hit || soft) && pk > FAINT * thr && pending < 0 && ts - last > REFRACTORY && ts - lastFaint > REFRACTORY) {
+            pending = ts;
+          }
+          if (pending >= 0 && ts - pending > 0.012) { // it stayed faint
+            lastFaint = pending;
+            if (!out) out = { onsets: [] };
+            (out.faint || (out.faint = [])).push(pending);
+            pending = -1;
           }
           if (a > peak) peak = a;
           if (++since >= reportEvery) {
@@ -62,7 +75,7 @@
 
   const A = (DC.audio = {
     ctx: null, micOn: false, usingWorklet: false,
-    onOnset: null, onLevel: null,
+    onOnset: null, onFaint: null, onLevel: null,
     _thr: 0.03, _stream: null, _node: null, _src: null, _noise: null, _out: null,
 
     async ensure() {
@@ -131,6 +144,7 @@
       if (!r) return;
       if (r.level != null && this.onLevel) this.onLevel(r.level);
       if (this.onOnset) for (const t of r.onsets) this.onOnset(t);
+      if (r.faint && this.onFaint) for (const t of r.faint) this.onFaint(t);
     },
 
     async startMic() {
