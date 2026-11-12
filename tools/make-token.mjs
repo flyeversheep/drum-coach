@@ -3,6 +3,7 @@
 // 用法：
 //   node tools/make-token.mjs --team <Team ID> --key <Key ID> --p8 <AuthKey_XXXX.p8 的路径> [--days 180]
 // 把输出的一长串粘贴到网页「伴奏音乐 → Apple Music → 开发者令牌」里。
+// 注意：Apple Music 入口目前在页面上是隐藏的，恢复方法见 README 的「改代码」。
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
