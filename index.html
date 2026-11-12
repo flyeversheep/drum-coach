@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>鼓点跟练</title>
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <div class="wrap">
@@ -157,13 +157,14 @@
       </div>
 
       <div id="paneFile" class="pane" hidden>
-        <label class="field"><span>添加伴奏文件（mp3 / m4a / wav，可以一次选多个）。文件名里带曲名的会自动配到对应曲目，带 Demo 的算示范、带 Backing 的算伴奏，都会记住。</span>
+        <label class="field"><span>添加伴奏文件（mp3 / m4a / wav，可以一次选多个）。文件名里带曲名的会自动配到对应曲目，带 Demo 的是示范，带 with click 的是伴奏 + 滴答声，带 without click 的是无滴答声伴奏，都会记住。</span>
           <!-- No accept filter: the iOS file picker greys out some audio files when one is set. -->
           <input type="file" id="fileInput" multiple>
         </label>
         <div class="seg" id="kindSeg" role="group" aria-label="用哪个录音">
           <button type="button" data-kind="demo" aria-pressed="true">示范（带鼓）</button>
-          <button type="button" data-kind="backing" aria-pressed="false">伴奏（不带鼓）</button>
+          <button type="button" data-kind="click" aria-pressed="false">伴奏 + 滴答声</button>
+          <button type="button" data-kind="backing" aria-pressed="false">伴奏（无滴答声）</button>
         </div>
         <p class="muted small" id="fileState"></p>
       </div>
@@ -225,15 +226,15 @@
   </details>
 
   <footer class="foot muted small">
-    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 14</span>
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 15</span>
   </footer>
 </div>
 
 <!-- Bump every ?v= number (and the version in the footer) together whenever a file changes, so devices never mix old and new files. -->
-<script src="js/scores.js?v=14"></script>
-<script src="js/notation.js?v=14"></script>
-<script src="js/audio.js?v=14"></script>
-<script src="js/music.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
+<script src="js/scores.js?v=15"></script>
+<script src="js/notation.js?v=15"></script>
+<script src="js/audio.js?v=15"></script>
+<script src="js/music.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
 </body>
 </html>

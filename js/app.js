@@ -551,26 +551,43 @@
     const n = norm(name);
     return custom.find((sc) => { const m = sc.name.match(/·\s*(.+?)\s*–/); const t = m ? norm(m[1]) : ''; return t.length >= 4 && n.includes(t); }) || null;
   }
-  // Each piece can hold two recordings: the demo (with drums) and the backing track (without).
-  const KIND_NAME = { demo: '示范（带鼓）', backing: '伴奏（不带鼓）' };
-  const kindOfFile = (name) => (/backing|without|minus/i.test(name) ? 'backing' : /demo|full|with.?drum/i.test(name) ? 'demo' : null);
-  // Files saved before there were two kinds sit under the bare score id; treat those as the demo.
-  const getTrack = async (id, kind) => (await DC.tracks.get(id + '|' + kind)) || (kind === 'demo' ? await DC.tracks.get(id) : null);
+  // Each piece can hold three recordings: the demo (with drums), the backing track with a click,
+  // and the backing track without one.
+  const KIND_NAME = { demo: '示范（带鼓）', click: '伴奏 + 滴答声', backing: '伴奏（无滴答声）' };
+  const KINDS = Object.keys(KIND_NAME);
+  const kindOfFile = (name) => {
+    const n = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+    if (/without click|no click|minus click/.test(n)) return 'backing';
+    if (/with click/.test(n)) return 'click';
+    if (/backing/.test(n)) return 'backing';
+    return /demo|full|with drum/.test(n) ? 'demo' : null;
+  };
+  // Older versions saved files under the bare score id (demo) and put every backing file in one slot,
+  // so look there too and go by the file's own name.
+  const getTrack = async (id, kind) => {
+    const own = await DC.tracks.get(id + '|' + kind);
+    if (own && !(kind === 'backing' && kindOfFile(own.name) === 'click')) return own;
+    if (kind === 'demo') return DC.tracks.get(id);
+    const old = await DC.tracks.get(id + '|backing');
+    return old && kindOfFile(old.name) === kind ? old : null;
+  };
   async function loadTrackFor(id) {
     const kind = S.trackKind;
-    const [f, demo, backing] = await Promise.all([getTrack(id, kind), getTrack(id, 'demo'), getTrack(id, 'backing')]);
+    const all = await Promise.all(KINDS.map((k) => getTrack(id, k)));
+    const f = all[KINDS.indexOf(kind)];
     if (S.source !== 'file' || !score || score.id !== id || S.trackKind !== kind) return;
     document.querySelectorAll('#kindSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === kind)));
-    const have = `示范${demo ? '已添加' : '还没有'}，伴奏${backing ? '已添加' : '还没有'}。`;
+    const missing = KINDS.filter((k, i) => !all[i]).map((k) => KIND_NAME[k]);
+    const have = missing.length ? `还没添加：${missing.join('、')}。` : '三个版本都已添加。';
     if (f) {
       DC.filePlayer.load(f);
       onSongLoaded(DC.filePlayer, f);
-      $('fileState').textContent = `正在用${KIND_NAME[kind]}：${f.name}。${have}`;
+      $('fileState').textContent = `正在用「${KIND_NAME[kind]}」：${f.name}。${have}`;
     } else {
       DC.filePlayer.unload();
       $('songBar').hidden = true;
       if (score.bpm) setBpm(score.bpm, true);
-      $('fileState').textContent = `这首曲子还没有${KIND_NAME[kind]}的文件，在上面添加。${have}`;
+      $('fileState').textContent = `这首曲子还没有「${KIND_NAME[kind]}」的文件，在上面添加。${have}`;
     }
   }
   function setTrackKind(kind) {
@@ -588,7 +605,7 @@
       if (!sc) { lines.push(`${f.name}：没找到名字对得上的曲目，先选好曲目再单独添加这个文件`); continue; }
       const kind = kindOfFile(f.name) || S.trackKind;
       await DC.tracks.put(sc.id + '|' + kind, f);
-      lines.push(`${f.name} → ${sc.name} 的${KIND_NAME[kind]}`);
+      lines.push(`${f.name} → ${sc.name} 的「${KIND_NAME[kind]}」`);
       if (!jump || sc.id === score.id) jump = sc.id;
       if (files.length === 1) S.trackKind = kind;
     }
@@ -601,14 +618,14 @@
     try {
       // A backing track without the click has no count-in to listen for, so borrow the timing of the
       // demo of the same piece when there is one (the two recordings share a timeline).
-      const demo = S.trackKind === 'backing' ? await getTrack(score.id, 'demo') : null;
+      const demo = S.trackKind !== 'demo' ? await getTrack(score.id, 'demo') : null;
       if (demo) {
         const sv = store.get('song:file:' + demo.name, null);
         const off = sv ? sv.offset : (await DC.findFirstBeat(demo, bpm)) + (COUNT_IN_BARS * 4 * 60) / bpm;
         if (p.key !== 'file:' + file.name) return;
         setBpm(sv ? sv.bpm : bpm, true);
         setSongOffset(off);
-        toast(`已按示范版对拍：第 1 小节从 ${S.songOffset.toFixed(2)} 秒开始。伴奏里没有预备拍的滴答声，看屏幕上的「预备… 1 2 3 4」或打开「节拍器」来数拍。不准就用 − / + 微调。`);
+        toast(`已按示范版对拍：第 1 小节从 ${S.songOffset.toFixed(2)} 秒开始。${S.trackKind === 'backing' ? '这个版本没有预备拍的滴答声，看屏幕上的「预备… 1 2 3 4」或打开「节拍器」来数拍。' : ''}不准就用 − / + 微调。`);
         return;
       }
       const first = await DC.findFirstBeat(file, bpm);
