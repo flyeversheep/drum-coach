@@ -23,6 +23,7 @@
     var fast = [0, 0, 0], slow = [0, 0, 0];
     var aF = [tc(0.015), tc(0.006), tc(0.004)], aS = [tc(0.06), tc(0.045), tc(0.045)];
     var RISE = [2.0, 1.7, 1.7]; // how far the quick level must jump ahead of the slow one, per band
+    var SOFT_RISE = [2.0, 1.5, 1.3]; // the same for faint hits, which may sit on top of a louder note still ringing
     return {
       setThr: function (v) { thr = v; },
       // x: Float32Array of samples, t: context time of x[0]. Returns null or {onsets:[time...], level}
@@ -39,7 +40,8 @@
             var v = n === 0 ? b0 : n === 1 ? b1 : b2;
             if (v < 0) v = -v;
             fast[n] += aF[n] * (v - fast[n]);
-            if (fast[n] > RISE[n] * slow[n]) { if (fast[n] > 0.12 * thr) hit = true; else if (fast[n] > 0.12 * FAINT * thr) soft = true; }
+            if (fast[n] > RISE[n] * slow[n] && fast[n] > 0.12 * thr) hit = true;
+            else if (fast[n] > SOFT_RISE[n] * slow[n] && fast[n] > 0.12 * FAINT * thr) soft = true;
             slow[n] += aS[n] * (fast[n] - slow[n]);
           }
           var ts = t + i / sr;
