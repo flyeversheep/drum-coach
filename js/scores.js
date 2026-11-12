@@ -231,6 +231,8 @@
     id: `pc${book}-${list.toLowerCase()}`, name: `${list} · ${title} – ${by}`, bpm: 80, tip: '', bars: [B(), B(), B(), B()],
   });
   DC.PIECE_BOOKS = { pc1: 'Book 1', pc2: 'Book 2' };
+  // Books left out of the score list for now. The pieces stay stored; remove a name here to show them again.
+  DC.HIDDEN_BOOKS = ['Book 2'];
   DC.PIECES = [
     piece(1, 'A1', 'Raptors', 'Daniel Bond'),
     piece(1, 'A2', 'Pop Up', 'Claire Brock'),

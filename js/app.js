@@ -125,7 +125,7 @@
     const groups = new Map();
     custom.forEach((s) => { const k = bookOf(s); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
     [...Object.values(DC.PIECE_BOOKS), '我的谱子'].forEach((label) => {
-      if (!groups.has(label)) return;
+      if (!groups.has(label) || DC.HIDDEN_BOOKS.includes(label)) return;
       const g = document.createElement('optgroup'); g.label = label;
       groups.get(label).forEach((s) => g.appendChild(new Option(s.name, s.id)));
       sel.appendChild(g);
