@@ -4,12 +4,22 @@
   const DC = window.DC;
 
   // Hit detector. Self-contained on purpose: its source text is also loaded into an AudioWorklet.
-  // A hit is a sample that clears the threshold AND jumps well above the recent (decaying) envelope,
-  // so ringing drums and steady background sound do not retrigger.
+  // A hit is a sudden rise, not a loudness level: the sound is split into low / middle / high bands,
+  // and in each band a quick-reacting level is compared with a slow-reacting one. While an earlier
+  // note is still ringing the two agree, so nothing fires; a new stroke makes the quick one leap ahead,
+  // even when the overall volume never dropped below the threshold in between. A kick under a ringing
+  // cymbal, or a hi-hat after a loud snare, shows up in its own band.
   function makeDetector(sr) {
-    var thr = 0.03, env = 0, last = -1, px = 0, py = 0, peak = 0, since = 0;
-    var decay = Math.exp(-1 / (sr * 0.08));
-    var REFRACTORY = 0.075, RISE = 1.8, reportEvery = Math.round(sr * 0.04);
+    var thr = 0.03, last = -1, px = 0, py = 0, peak = 0, since = 0, pk = 0;
+    var REFRACTORY = 0.075, reportEvery = Math.round(sr * 0.04);
+    var k = function (fc) { return 1 - Math.exp(-2 * Math.PI * fc / sr); };
+    var tc = function (sec) { return 1 - Math.exp(-1 / (sr * sec)); };
+    var aLo = k(150), aMid = k(2500), aHi = k(4000), lpLo = 0, lpMid = 0, lpHi = 0;
+    var pkDecay = Math.exp(-1 / (sr * 0.004));
+    // per band: quick level, slow level, and their time constants
+    var fast = [0, 0, 0], slow = [0, 0, 0];
+    var aF = [tc(0.015), tc(0.006), tc(0.004)], aS = [tc(0.06), tc(0.045), tc(0.045)];
+    var RISE = [2.0, 1.7, 1.7]; // how far the quick level must jump ahead of the slow one, per band
     return {
       setThr: function (v) { thr = v; },
       // x: Float32Array of samples, t: context time of x[0]. Returns null or {onsets:[time...], level}
@@ -19,8 +29,17 @@
           var y = x[i] - px + 0.995 * py; // remove DC / rumble
           px = x[i]; py = y;
           var a = y < 0 ? -y : y;
-          env *= decay;
-          if (a > thr && a > env * RISE) {
+          pk = a > pk ? a : pk * pkDecay; // short-lived peak, compared with the sensitivity threshold
+          lpLo += aLo * (y - lpLo); lpMid += aMid * (y - lpMid); lpHi += aHi * (y - lpHi);
+          var b0 = lpLo, b1 = lpMid - lpLo, b2 = y - lpHi, hit = false;
+          for (var n = 0; n < 3; n++) {
+            var v = n === 0 ? b0 : n === 1 ? b1 : b2;
+            if (v < 0) v = -v;
+            fast[n] += aF[n] * (v - fast[n]);
+            if (fast[n] > RISE[n] * slow[n] && fast[n] > 0.12 * thr) hit = true;
+            slow[n] += aS[n] * (fast[n] - slow[n]);
+          }
+          if (hit && pk > thr) {
             var ts = t + i / sr;
             if (ts - last > REFRACTORY) {
               last = ts;
@@ -28,7 +47,6 @@
               out.onsets.push(ts);
             }
           }
-          if (a > env) env = a;
           if (a > peak) peak = a;
           if (++since >= reportEvery) {
             if (!out) out = { onsets: [] };
