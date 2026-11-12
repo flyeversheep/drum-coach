@@ -15,12 +15,14 @@
 
   // ---- state ------------------------------------------------------------
   const S = Object.assign(
-    { bpm: 76, mode: 'tempo', source: 'ext', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true, trackKind: 'demo' },
+    { bpm: 76, mode: 'tempo', source: 'file', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true, trackKind: 'demo' },
     store.get('settings', {})
   );
   S.running = false;
   // One-time switch for devices set up before "music from another app" became the default source.
-  if (!S.extDefault) { S.source = 'ext'; S.extDefault = true; }
+  // The two sources on offer are local audio files (the default) and the metronome.
+  if (S.source !== 'file' && S.source !== 'metro') S.source = 'file';
+  if (!S.fileDefault) { S.source = 'file'; S.fileDefault = true; }
   const saveSettings = () => {
     const { running, ...keep } = S;
     store.set('settings', keep);
@@ -901,7 +903,6 @@
     $('cal').value = S.cal == null ? '' : S.cal;
     $('songVol').value = S.vol;
     setSens(S.sens);
-    if (S.source === 'apple') S.source = 'ext'; // an Apple Music song has to be picked again after a reload
     setSource(S.source);
     setMode(S.mode);
     loadScore(S.scoreId, true);
