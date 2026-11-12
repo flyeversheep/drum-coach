@@ -79,25 +79,37 @@
   // Browsers report playback time in steps (Safari especially): the value sits still, then jumps.
   // A reading is exact right after a jump and stale until the next one, so the true clock is the
   // upper edge of the readings measured against the page's own smooth timer.
-  function edge(off, raw, snap) {
-    if (off == null || Math.abs(raw - off) > snap) return raw;
-    return raw > off ? off + (raw - off) * 0.3 : off - 0.00005;
+  // One odd reading must not move the line, so each update shifts the estimate by at most 1.5 ms,
+  // and a real jump (a seek) is only believed once several readings in a row agree on it.
+  function tracker(snap) {
+    let off = null, far = 0;
+    return {
+      reset() { off = null; far = 0; },
+      feed(raw) {
+        if (off == null) { off = raw; return off; }
+        const d = raw - off;
+        if (Math.abs(d) > snap) { if (++far >= 4) { off = raw; far = 0; } return off; }
+        far = 0;
+        off += d > 0 ? Math.min(d, 0.0015) : -0.00003;
+        return off;
+      },
+    };
   }
-  let ctxOff = null;
+  const ctxTrack = tracker(0.2);
   function smoothNow() { // audio-context time, without the steps
     const perf = performance.now() / 1000;
-    ctxOff = edge(ctxOff, A.ctx.currentTime - perf, 0.2);
-    return perf + ctxOff;
+    return perf + ctxTrack.feed(A.ctx.currentTime - perf);
   }
   function mediaClock(p) {
     let off = null; // media time minus (context time * rate)
+    const tr = tracker(0.15);
     return {
       active: false,
       update(now) {
         this.active = p.isPlaying();
-        if (!this.active) { off = null; return; }
+        if (!this.active) { off = null; tr.reset(); return; }
         const raw = p.getTime() - now * p.rate;
-        off = edge(off, raw, 0.15);
+        off = tr.feed(raw);
       },
       posAt(t) { return (t * p.rate + off - S.songOffset) * S.bpm / 15; },
       timeAt(pos) { return (pos * 15 / S.bpm + S.songOffset - off) / p.rate; },

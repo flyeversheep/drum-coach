@@ -135,6 +135,7 @@
     const notes = [];
     cols.forEach((c, i) => { if (c.length) notes.push(i); });
     let shownRow = -1;
+    let phRow = -1;
     let curStep = null;
     const TAG = { good: '', early: '早', late: '晚', miss: '漏' };
 
@@ -170,11 +171,21 @@
       },
       // pos: fractional step position within the score, or null to hide
       setPlayhead(pos) {
-        if (pos == null) { rows.forEach((r) => r.ph.setAttribute('visibility', 'hidden')); shownRow = -1; return; }
+        if (pos == null) {
+          if (phRow >= 0) rows[phRow].ph.setAttribute('visibility', 'hidden');
+          phRow = -1; shownRow = -1;
+          return;
+        }
         const s = Math.min(total - 1, Math.max(0, Math.floor(pos)));
         const m = info[s];
-        rows.forEach((r, i) => r.ph.setAttribute('visibility', i === m.row ? 'visible' : 'hidden'));
-        rows[m.row].ph.setAttribute('x', (m.x + (pos - s) * G.stepW - 1.5).toFixed(1));
+        if (m.row !== phRow) { // only touch visibility when the line changes row
+          if (phRow >= 0) rows[phRow].ph.setAttribute('visibility', 'hidden');
+          rows[m.row].ph.setAttribute('visibility', 'visible');
+          phRow = m.row;
+        }
+        // Glide across the gap at a bar line instead of hopping over it.
+        const nx = info[s + 1] && info[s + 1].row === m.row ? info[s + 1].x : m.x + G.stepW;
+        rows[m.row].ph.setAttribute('x', (m.x + (pos - s) * (nx - m.x) - 1.5).toFixed(1));
         showRow(m.row);
       },
     };
