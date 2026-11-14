@@ -15,7 +15,7 @@
 
   // ---- state ------------------------------------------------------------
   const S = Object.assign(
-    { bpm: 76, mode: 'tempo', source: 'file', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true, trackKind: 'demo' },
+    { bpm: 76, mode: 'tempo', source: 'file', metro: true, countIn: true, demo: false, sens: 55, cal: null, judge: 'std', scoreId: 'rock8', songOffset: 0, vol: 0.8, autoRestart: true, loop: true, trackKind: 'demo' },
     store.get('settings', {})
   );
   S.running = false;
@@ -355,10 +355,26 @@
     if (!S.running) return;
     if (S.mode === 'follow') { followBackToStart(); say('从头再来：打第一个音'); return; }
     if (free()) { waitForHit(S.source === 'ext' ? '把音乐倒回开头，再打第一下，我就跟上' : '从头再来：你打第一下，我就跟上'); return; }
+    rewindSong('从头再来');
+  }
+  // Put the song back to 0:00 and start judging afresh. Also used when the song ends and "loop" is on.
+  async function rewindSong(msg) {
     const p = provider();
-    try { if (p && p.ready) p.seek(0); } catch (e) { /* ignore */ }
     resetStats(); view.clearMarks(); markAbs.fill(null); judge.done.clear(); judge.cursor = null; sched.next = null;
-    say('从头再来');
+    if (p && p.ready) {
+      clock = mediaClock(p); // a fresh clock, so nothing is judged against the old position while the jump settles
+      try { await p.seek(0); if (!p.isPlaying()) await p.play(); } catch (e) { /* ignore */ }
+    }
+    say(msg);
+  }
+  let laps = 0;
+  function onSongEnded() {
+    if (!S.running) return;
+    if (!S.loop || S.mode !== 'tempo' || free()) { stop(true); return; }
+    const n = stats.good + stats.early + stats.late + stats.miss;
+    laps++;
+    if (n) toast(`第 ${laps} 遍：${n} 个音里准了 ${stats.good} 个，得分 ${scoreNow()}。接着从头再来一遍。`);
+    rewindSong(`第 ${laps + 1} 遍，从头开始`);
   }
   function restartOnHit(t) {
     pause.wait = false;
@@ -485,6 +501,7 @@
     judge.done.clear();
     judge.cursor = null;
     sched.next = null;
+    laps = 0;
     Object.assign(pause, { wait: false, lastOnset: 0, missRun: 0 });
     if (S.mode === 'follow') {
       Object.assign(follow, { i: 0, lastT: null, gap: 0, est: [], laps: 0 });
@@ -510,6 +527,7 @@
     S.running = true;
     $('startBtn').textContent = '■ 停止';
     $('againBtn').hidden = false;
+    document.body.classList.add('running');
     $('startBtn').classList.add('on');
     try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
   }
@@ -521,6 +539,7 @@
     if (view) { view.setPlayhead(null); view.setCursor(null); }
     $('startBtn').textContent = '▶ 开始';
     $('againBtn').hidden = true;
+    document.body.classList.remove('running');
     $('startBtn').classList.remove('on');
     if (wakeLock) { try { wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null; }
     const n = stats.good + stats.early + stats.late + stats.miss;
@@ -937,7 +956,7 @@
     A.onOnset = onOnset;
     A.onFaint = onFaint;
     A.onLevel = (l) => { if (l > meterPeak) meterPeak = l; };
-    DC.filePlayer.onEnded = DC.apple.onEnded = () => stop(true);
+    DC.filePlayer.onEnded = DC.apple.onEnded = onSongEnded;
 
     fillScoreSelect();
     $('bpm').value = S.bpm;
@@ -965,6 +984,8 @@
       S.demo = e.target.checked; saveSettings();
       if (S.demo && A.micOn) toast('示范鼓声如果从音箱放出来，会被麦克风当成你打的。听示范时先别计较得分，或者戴耳机。');
     });
+    $('optLoop').checked = S.loop;
+    $('optLoop').addEventListener('change', (e) => { S.loop = e.target.checked; saveSettings(); });
     $('optRestart').checked = S.autoRestart;
     $('optRestart').addEventListener('change', (e) => { S.autoRestart = e.target.checked; saveSettings(); });
     $('optJudge').addEventListener('change', (e) => { S.judge = e.target.value; saveSettings(); });
