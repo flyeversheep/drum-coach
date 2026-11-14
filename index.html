@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>鼓点跟练</title>
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
 <div class="wrap">
@@ -74,7 +74,6 @@
         <label><input type="checkbox" id="optCount"> 预备拍</label>
         <label><input type="checkbox" id="optDemo"> 示范鼓声</label>
         <label><input type="checkbox" id="optLoop"> 循环播放</label>
-        <label><input type="checkbox" id="optRestart"> 停 5 秒后从头跟</label>
         <label class="field inline"><span>判定</span>
           <select id="optJudge">
             <option value="easy">宽松</option>
@@ -125,7 +124,7 @@
       </div>
 
       <div id="paneExt" class="pane" hidden>
-        <p class="muted small">音乐在「音乐」App 或别的设备上放，这个页面全程不出声，只听鼓。「歌曲速度」会自动用这首曲子的速度（书上标的），需要时可以手动改；按「开始」后去放音乐，他打第一下时谱子开始走。停 5 秒或点「从头再来」，谱子回到开头等下一次。音乐请用耳机听，否则会被麦克风当成鼓声。</p>
+        <p class="muted small">音乐在「音乐」App 或别的设备上放，这个页面全程不出声，只听鼓。「歌曲速度」会自动用这首曲子的速度（书上标的），需要时可以手动改；按「开始」后去放音乐，他打第一下时谱子开始走。点「从头再来」，谱子回到开头等下一次。音乐请用耳机听，否则会被麦克风当成鼓声。</p>
       </div>
 
       <div id="paneApple" class="pane" hidden>
@@ -227,15 +226,15 @@
   </details>
 
   <footer class="foot muted small">
-    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 24</span>
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 25</span>
   </footer>
 </div>
 
 <!-- Bump every ?v= number (and the version in the footer) together whenever a file changes, so devices never mix old and new files. -->
-<script src="js/scores.js?v=24"></script>
-<script src="js/notation.js?v=24"></script>
-<script src="js/audio.js?v=24"></script>
-<script src="js/music.js?v=24"></script>
-<script src="js/app.js?v=24"></script>
+<script src="js/scores.js?v=25"></script>
+<script src="js/notation.js?v=25"></script>
+<script src="js/audio.js?v=25"></script>
+<script src="js/music.js?v=25"></script>
+<script src="js/app.js?v=25"></script>
 </body>
 </html>
