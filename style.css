@@ -264,4 +264,16 @@ input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px;
   .gauge .dot { transition: left 0.08s; }
 }
 
-.again { min-height: 52px; font-size: 16px; }
+/* While practising, "start over" floats in the bottom corner so it can be reached without scrolling. */
+.again {
+  position: fixed; z-index: 20;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  min-height: 64px; padding: 0 26px; border: 0; border-radius: 32px;
+  background: var(--accent); color: var(--accent-ink);
+  font: 700 19px/1 var(--round);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  touch-action: manipulation;
+}
+.again:active { transform: scale(0.96); }
+body.running .wrap { padding-bottom: 104px; }
