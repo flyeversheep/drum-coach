@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>鼓点跟练</title>
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 <div class="wrap">
@@ -59,8 +59,6 @@
     </div>
 
     <div class="transport">
-      <button type="button" id="startBtn" class="go">▶ 开始</button>
-      <button type="button" id="againBtn" class="again" hidden>↺ 从头再来</button>
       <div class="bpm">
         <span class="lbl" id="bpmLbl">速度</span>
         <button type="button" id="bpmDown" aria-label="慢一点">−</button>
@@ -85,6 +83,12 @@
     </div>
     <p class="toast" id="toast" role="status" hidden></p>
   </section>
+
+  <!-- Start / stop and start over float in the bottom corner, so they can be pressed without scrolling. -->
+  <div class="dock" role="group" aria-label="开始和停止">
+    <button type="button" id="againBtn" class="again" hidden>↺ 从头再来</button>
+    <button type="button" id="startBtn" class="go">▶ 开始</button>
+  </div>
 
   <div class="cols">
     <section class="panel" aria-label="麦克风">
@@ -226,15 +230,15 @@
   </details>
 
   <footer class="foot muted small">
-    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 25</span>
+    麦克风只能听出「什么时候打了一下」，分不出打的是哪个鼓。音乐外放时会被当成鼓声，建议戴耳机听音乐。空格键 = 开始 / 停止。<span id="appVersion"> 版本 26</span>
   </footer>
 </div>
 
 <!-- Bump every ?v= number (and the version in the footer) together whenever a file changes, so devices never mix old and new files. -->
-<script src="js/scores.js?v=25"></script>
-<script src="js/notation.js?v=25"></script>
-<script src="js/audio.js?v=25"></script>
-<script src="js/music.js?v=25"></script>
-<script src="js/app.js?v=25"></script>
+<script src="js/scores.js?v=26"></script>
+<script src="js/notation.js?v=26"></script>
+<script src="js/audio.js?v=26"></script>
+<script src="js/music.js?v=26"></script>
+<script src="js/app.js?v=26"></script>
 </body>
 </html>
