@@ -1,2 +1,4 @@
 .DS_Store
 *.p8
+xcuserdata/
+/build/

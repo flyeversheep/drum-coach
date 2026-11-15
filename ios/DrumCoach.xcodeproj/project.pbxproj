@@ -1,0 +1,274 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DC0000000000000000000101 /* DrumCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000001 /* DrumCoachApp.swift */; };
+		DC0000000000000000000102 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000002 /* WebView.swift */; };
+		DC0000000000000000000103 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000003 /* Assets.xcassets */; };
+		DC0000000000000000000104 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000004 /* index.html */; };
+		DC0000000000000000000105 /* style.css in Resources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000005 /* style.css */; };
+		DC0000000000000000000106 /* js in Resources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000006 /* js */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		DC0000000000000000000001 /* DrumCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrumCoachApp.swift; sourceTree = "<group>"; };
+		DC0000000000000000000002 /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
+		DC0000000000000000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DC0000000000000000000004 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = index.html; path = ../index.html; sourceTree = SOURCE_ROOT; };
+		DC0000000000000000000005 /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = style.css; path = ../style.css; sourceTree = SOURCE_ROOT; };
+		DC0000000000000000000006 /* js */ = {isa = PBXFileReference; lastKnownFileType = folder; name = js; path = ../js; sourceTree = SOURCE_ROOT; };
+		DC0000000000000000000010 /* DrumCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DrumCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DC0000000000000000000201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DC0000000000000000000301 = {
+			isa = PBXGroup;
+			children = (
+				DC0000000000000000000302 /* DrumCoach */,
+				DC0000000000000000000303 /* Web */,
+				DC0000000000000000000304 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DC0000000000000000000302 /* DrumCoach */ = {
+			isa = PBXGroup;
+			children = (
+				DC0000000000000000000001 /* DrumCoachApp.swift */,
+				DC0000000000000000000002 /* WebView.swift */,
+				DC0000000000000000000003 /* Assets.xcassets */,
+			);
+			path = DrumCoach;
+			sourceTree = "<group>";
+		};
+		DC0000000000000000000303 /* Web */ = {
+			isa = PBXGroup;
+			children = (
+				DC0000000000000000000004 /* index.html */,
+				DC0000000000000000000005 /* style.css */,
+				DC0000000000000000000006 /* js */,
+			);
+			name = Web;
+			sourceTree = "<group>";
+		};
+		DC0000000000000000000304 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DC0000000000000000000010 /* DrumCoach.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DC0000000000000000000401 /* DrumCoach */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DC0000000000000000000602 /* Build configuration list for PBXNativeTarget "DrumCoach" */;
+			buildPhases = (
+				DC0000000000000000000202 /* Sources */,
+				DC0000000000000000000201 /* Frameworks */,
+				DC0000000000000000000203 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DrumCoach;
+			productName = DrumCoach;
+			productReference = DC0000000000000000000010 /* DrumCoach.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DC0000000000000000000501 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					DC0000000000000000000401 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = DC0000000000000000000601 /* Build configuration list for PBXProject "DrumCoach" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				"zh-Hans",
+				en,
+				Base,
+			);
+			mainGroup = DC0000000000000000000301;
+			productRefGroup = DC0000000000000000000304 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DC0000000000000000000401 /* DrumCoach */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DC0000000000000000000203 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC0000000000000000000103 /* Assets.xcassets in Resources */,
+				DC0000000000000000000104 /* index.html in Resources */,
+				DC0000000000000000000105 /* style.css in Resources */,
+				DC0000000000000000000106 /* js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DC0000000000000000000202 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC0000000000000000000101 /* DrumCoachApp.swift in Sources */,
+				DC0000000000000000000102 /* WebView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		DC0000000000000000000701 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		DC0000000000000000000702 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		DC0000000000000000000703 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "鼓点跟练";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用麦克风听打鼓的声音，判断每一下打得准不准。声音只在这台 iPad 上处理，不会保存或上传。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flyeversheep.drumcoach;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
+		DC0000000000000000000704 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "鼓点跟练";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用麦克风听打鼓的声音，判断每一下打得准不准。声音只在这台 iPad 上处理，不会保存或上传。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.flyeversheep.drumcoach;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		DC0000000000000000000601 /* Build configuration list for PBXProject "DrumCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DC0000000000000000000701 /* Debug */,
+				DC0000000000000000000702 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DC0000000000000000000602 /* Build configuration list for PBXNativeTarget "DrumCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DC0000000000000000000703 /* Debug */,
+				DC0000000000000000000704 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DC0000000000000000000501 /* Project object */;
+}

@@ -1,0 +1,33 @@
+# Builds the iPad app and starts it once in a simulator, to check that the bundled page loads.
+name: iPad app
+on:
+  push:
+    paths: ['ios/**', 'js/**', 'index.html', 'style.css', '.github/workflows/ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for the iPad simulator
+        run: |
+          xcodebuild -project ios/DrumCoach.xcodeproj -target DrumCoach -configuration Debug \
+            -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO SYMROOT="$PWD/build" build | tail -n 40
+          ls -R build/Debug-iphonesimulator/DrumCoach.app | head -n 40
+      - name: Start the app and check the page
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -m1 'iPad' | grep -oE '[0-9A-F-]{36}')
+          echo "Simulator: $DEVICE"
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE"
+          xcrun simctl install "$DEVICE" build/Debug-iphonesimulator/DrumCoach.app
+          xcrun simctl launch --stdout=smoke.log --stderr=smoke.err "$DEVICE" com.flyeversheep.drumcoach -smokeTest
+          for i in $(seq 1 30); do grep -q '^SMOKE' smoke.log 2>/dev/null && break; sleep 2; done
+          cat smoke.log || true
+          grep -q '"secure":true' smoke.log
+          grep -q '"mic":true' smoke.log
+          grep -q '"storage":true' smoke.log
+          grep -q '"staff":true' smoke.log

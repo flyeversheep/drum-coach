@@ -460,7 +460,7 @@
     } catch (e) {
       const insecure = e.message === 'insecure' || !window.isSecureContext;
       toast(insecure ? '浏览器只允许 https 或 http://localhost 的页面用麦克风，请按 README 的方法打开本页面。'
-        : e.name === 'NotAllowedError' ? '没有麦克风权限。请在浏览器地址栏旁边允许使用麦克风，然后再试一次。'
+        : e.name === 'NotAllowedError' ? (window.DC_NATIVE ? '没有麦克风权限。请到 iPad 的「设置」→「鼓点跟练」里打开麦克风，然后再试一次。' : '没有麦克风权限。请在浏览器地址栏旁边允许使用麦克风，然后再试一次。')
         : '打不开麦克风：' + (e.message || e.name));
       showMic();
       return false;
@@ -931,7 +931,8 @@
   }
   function exportScores(list) {
     if (!list.length) { toast('还没有自己的谱子可以导出。'); return; }
-    const link = location.origin + location.pathname + '#import=' + DC.packScores(list);
+    // The iPad app sets DC_LINK_BASE, so links exported there still open the web page on other devices.
+    const link = (window.DC_LINK_BASE || location.origin + location.pathname) + '#import=' + DC.packScores(list);
     const box = $('ioBox');
     box.value = link;
     box.select();
