@@ -82,6 +82,25 @@ python3 -m http.server 8080
 
 想放到自己的网址上：这是一个纯静态网站，把整个文件夹放到任何支持 https 的静态空间即可。本仓库用的是 GitHub Pages，从 `main` 分支根目录发布。
 
+## iPad App
+
+`ios/` 里是一个 iPad 应用的 Xcode 工程。它把上面这个网页原样装进 App 里显示，所以谱子、击打检测、伴奏对拍都和网页版是同一份代码；不同的地方是：
+
+- 不需要网络，也不经过 Safari，主屏幕上有自己的图标；
+- 麦克风只在第一次问一次权限；
+- App 开着时屏幕不会自动变暗、锁屏；
+- 数据存在 App 自己名下，和 Safari 里的互不相通。
+
+**安装**（需要一台装了 Xcode 15 或更新版本的 Mac；免费的 Apple ID 就可以，但那样装上的 App 7 天后要重新装一次，付费开发者账号是一年）：
+
+1. 用 Xcode 打开 `ios/DrumCoach.xcodeproj`。
+2. 左边点最上面的 DrumCoach → TARGETS 里的 DrumCoach → Signing & Capabilities，在 Team 里选自己的 Apple ID。提示 Bundle Identifier 已被占用时，把它改成别的名字，比如在末尾加上自己的名字。
+3. 用线把 iPad 接到 Mac，在 Xcode 顶部的设备列表里选它，按 ▶。第一次需要在 iPad 的「设置 → 隐私与安全性」里打开开发者模式，并在「设置 → 通用 → VPN 与设备管理」里信任自己的开发者证书。
+
+**把谱子搬进 App**：在 Safari 的网页版里打开「编辑谱子」→「导出我的全部谱子」，链接会被复制；打开 App，在「编辑谱子」底部的框里粘贴，点「导入」。伴奏文件在 App 里重新「添加伴奏文件」选一次（从「文件」App 里选）。
+
+改了网页的文件后，在 Xcode 里重新按 ▶ 就会带上新的内容，不需要另外同步。
+
 ## 改代码
 
 ```
@@ -93,6 +112,7 @@ js/audio.js       节拍器、示范鼓声、麦克风击打检测
 js/music.js       本地音频播放、伴奏文件存储、自动对拍、Apple Music
 js/app.js         练习逻辑和界面
 tools/make-token.mjs  生成 Apple Music 开发者令牌
+ios/                  iPad App 的 Xcode 工程（Swift 外壳 + 上面这些文件）
 ```
 
 - **版本号**：每次改动文件，把 `index.html` 里所有 `?v=数字` 和页脚的「版本 数字」一起加一，这样设备不会把缓存的旧脚本和新页面混用。
