@@ -15,7 +15,7 @@ jobs:
       - name: Build for the iPad simulator
         run: |
           xcodebuild -project ios/DrumCoach.xcodeproj -target DrumCoach -configuration Debug \
-            -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO SYMROOT="$PWD/build" build | tail -n 40
+            -sdk iphonesimulator CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= SYMROOT="$PWD/build" build | tail -n 40
           ls -R build/Debug-iphonesimulator/DrumCoach.app | head -n 40
       - name: Start the app and check the page
         run: |
@@ -24,7 +24,11 @@ jobs:
           xcrun simctl boot "$DEVICE"
           xcrun simctl bootstatus "$DEVICE"
           xcrun simctl install "$DEVICE" build/Debug-iphonesimulator/DrumCoach.app
-          xcrun simctl launch --stdout=smoke.log --stderr=smoke.err "$DEVICE" com.flyeversheep.drumcoach -smokeTest
+          # A simulator that has only just started sometimes refuses the first launch.
+          for try in 1 2 3; do
+            xcrun simctl launch --stdout=smoke.log --stderr=smoke.err "$DEVICE" com.flyeversheep.drumcoach -smokeTest && break
+            sleep 20
+          done
           for i in $(seq 1 30); do grep -q '^SMOKE' smoke.log 2>/dev/null && break; sleep 2; done
           cat smoke.log || true
           grep -q '"secure":true' smoke.log
