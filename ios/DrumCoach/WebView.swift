@@ -90,7 +90,13 @@ struct WebView: UIViewRepresentable {
             """
             webView.evaluateJavaScript(probe) { result, error in
                 print("SMOKE \(result ?? "error: \(String(describing: error))")")
+                fflush(stdout)
             }
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            print("SMOKE load failed: \(error)")
+            fflush(stdout)
         }
         #endif
 
