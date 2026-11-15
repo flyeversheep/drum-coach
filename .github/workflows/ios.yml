@@ -24,9 +24,12 @@ jobs:
           xcrun simctl boot "$DEVICE"
           xcrun simctl bootstatus "$DEVICE"
           xcrun simctl install "$DEVICE" build/Debug-iphonesimulator/DrumCoach.app
+          plutil -p build/Debug-iphonesimulator/DrumCoach.app/Info.plist
           # A simulator that has only just started sometimes refuses the first launch.
           for try in 1 2 3; do
-            xcrun simctl launch --stdout=smoke.log --stderr=smoke.err "$DEVICE" com.flyeversheep.drumcoach -smokeTest && break
+            xcrun simctl launch --stdout="$PWD/smoke.log" --stderr="$PWD/smoke.err" "$DEVICE" com.flyeversheep.drumcoach -smokeTest && break
+            xcrun simctl spawn "$DEVICE" log show --last 1m --style compact \
+              --predicate 'eventMessage CONTAINS[c] "drumcoach"' | tail -n 30 || true
             sleep 20
           done
           for i in $(seq 1 30); do grep -q '^SMOKE' smoke.log 2>/dev/null && break; sleep 2; done
